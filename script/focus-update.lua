@@ -76,14 +76,19 @@ local function watch_robot_candidate(surface, search_area, ref_pos, restrictions
     end
 end
 
---- @param last_position MapPosition
+--- @class WatchItemOnBeltCandidateRestrictions
+--- @field item? ItemIDAndQualityIDPair
+
 --- @param target_belt_entity LuaEntity
---- @param item ItemIDAndQualityIDPair
-local function watch_item_on_belt_candidate(last_position, target_belt_entity, item)
-    local best_guess, line_idx = utility.minimum_on_belt(target_belt_entity, function (potential, line)
-        if potential.stack.name ~= item.name or potential.stack.quality ~= item.quality
-            then return end
-        return utility.distance(last_position, line.get_line_item_position(potential.position))
+--- @param restrictions WatchItemOnBeltCandidateRestrictions
+local function watch_newest_item_on_belt_candidate(target_belt_entity, restrictions)
+    local best_guess, line_idx = utility.minimum_on_belt(target_belt_entity, function (candidate, line)
+        if restrictions.item ~= nil and (
+            candidate.stack.name ~= restrictions.item.name
+            or candidate.stack.quality ~= restrictions.item.quality
+        ) then return end
+
+        return candidate.unique_id
     end)
 
     if best_guess and line_idx then
@@ -96,23 +101,40 @@ end
 local function watch_next(focus, entity)
     local entity_type = entity.type
     if utility.is_belt[entity_type] then
-        focus.watching = watch_item_on_belt_candidate(
-            focus.position,
+        return watch_newest_item_on_belt_candidate(
             entity,
-            focus.watching.item
+            {item = focus.watching.item}
         )
     elseif entity_type == "inserter" then
-        focus.watching = watchdog.create.item_in_inserter_hand(entity)
+        return watchdog.create.item_in_inserter_hand(entity)
     elseif utility.is_crafting_machine[entity_type] then
-        focus.watching = watchdog.create.item_in_crafting_machine(entity)
+        return watchdog.create.item_in_crafting_machine(entity)
     elseif utility.is_container[entity_type] then
-        local inventory_type = utility.is_container[entity_type]
-        focus.watching = watchdog.create.item_in_container(entity, inventory_type, focus.watching.item)
-    else
-        return false
+        return watchdog.create.item_in_container(
+            entity,
+            utility.is_container[entity_type],
+            focus.watching.item
+        )
+    end
+end
+
+--- @param focus FocusInstance
+--- @param entity LuaEntity
+local function watch_drop_target(focus, entity)
+    if entity.prototype.vector_to_place_result == nil
+        then return end
+
+    if entity.drop_target ~= nil then
+        return watch_next(focus, entity.drop_target)
     end
 
-    return true
+    local dropped_item_entity = entity.surface.find_entities_filtered({
+        position = entity.drop_position,
+        type = {"item-entity"}
+    })
+    if dropped_item_entity == nil
+        then return end
+    return watch_next(focus, dropped_item_entity)
 end
 
 --- @param focus FocusInstance
@@ -186,7 +208,8 @@ local function item_in_inserter_hand(focus)
     if dropped_into == nil
         then return false end
 
-    return watch_next(focus, dropped_into)
+    focus.watching = watch_next(focus, dropped_into)
+    return true
 end
 
 --- @param focus FocusInstance
@@ -227,9 +250,6 @@ end
 --- @param focus FocusInstance
 local function item_in_crafting_machine(focus)
     local entity = focus.watching.handle
-    if entity.get_recipe() == nil
-        then return false end
-
     if entity.products_finished == focus.watching.pin.initial_products_finished
         then return true end
 
@@ -245,21 +265,15 @@ local function item_in_crafting_machine(focus)
         utility.aabb_expand(entity.bounding_box, utility.robot_search_d),
         entity.position,
         __restrictions_noop
-    )
+    ) or watch_drop_target(focus, entity)
 
     if first_taken_by ~= nil then
-        -- Crafting machine put its first output here
+        -- Crafting machine put its (first) output here
         focus.watching = first_taken_by
-        return true
+    elseif first_taken_by == nil and entity.get_recipe() == nil then
+        -- If this is furnace (recycler) and we found no candidates then there were no products
+        return false
     end
-
-    -- if pin.place_output ~= nil then
-    --     local best_guess, line_idx = utility.minimum_on_belt(pin.place_output, function (item, line)
-    --         if item.stack.name ~= item
-    --             then return end
-    --         return utility.distance(last_position, line.get_line_item_position(item.position))
-    --     end)
-    -- end
 
     return true
 end
@@ -279,7 +293,7 @@ local function item_held_by_robot(focus)
     if dropping_to == nil or not dropping_to.valid
         then return false end
 
-    return watch_next(focus, dropping_to)
+    focus.watching = watch_next(focus, dropping_to)
 end
 
 local map = {

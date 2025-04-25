@@ -1,7 +1,7 @@
 local utility = {}
 
 function utility.debug(...)
-    if not mods["debug-adapter"]
+    if not script.active_mods["debugadapter"]
         then return end
     print(game.tick, ...)
 end
@@ -131,10 +131,14 @@ function utility.minimum_on_belt(belt_entity, d_fn)
     local local_d
 
     local line_count = belt_entity.get_max_transport_line_index()
+    local cnt = 0
+    local total = 0
     for line_idx = 1, line_count do
         local line = belt_entity.get_transport_line(line_idx)
         for _, item in ipairs(line.get_detailed_contents()) do
+            total = total + 1
             local d = d_fn(item, line)
+            if d ~= nil then cnt = cnt + 1 end
             if d ~= nil and (local_d == nil or d < local_d) then
                 local_minimum = item
                 local_line_idx = line_idx
@@ -142,6 +146,8 @@ function utility.minimum_on_belt(belt_entity, d_fn)
             end
         end
     end
+    utility.debug("minimum_on_belt candidates "..cnt.."/"..total)
+
     return local_minimum, local_line_idx
 end
 

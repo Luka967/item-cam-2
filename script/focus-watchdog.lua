@@ -61,52 +61,46 @@ end
 --- @param entity LuaEntity
 --- @return FocusWatchdog
 function create.item_in_inserter_hand(entity)
-    local item = entity.held_stack.valid_for_read
-        and {
-            name = entity.held_stack.name,
-            quality = entity.held_stack.quality
-        }
-        or nil
+    if not entity.held_stack.valid_for_read then
+        error("Tried creating watchdog item-in-inserter-hand for inserter that has nothing in hand")
+    end
     return {
         type = "item-in-inserter-hand",
         handle = entity,
-        item = item
+        item = {
+            name = entity.held_stack.name,
+            quality = entity.held_stack.quality
+        }
     }
 end
 
 --- @class PinItemInCraftingMachine
---- @field inventory LuaInventory
+--- @field initial_products_finished integer
 
 --- @param entity LuaEntity
 --- @return FocusWatchdog
 function create.item_in_crafting_machine(entity)
-    local inventory
-    if entity.type == "assembling-machine" then
-        inventory = entity.get_inventory(defines.inventory.assembling_machine_output)
-    elseif entity.type == "furnace" then
-        inventory = entity.get_inventory(defines.inventory.furnace_result)
-    end
-
     return {
         type = "item-in-crafting-machine",
         handle = entity,
         pin = {
-            inventory = inventory
+            initial_products_finished = entity.products_finished
         }
     }
 end
 
 --- @class PinItemHeldByRobot
 --- @field inventory LuaInventory
+--- @field drop_target LuaEntity
 
 --- @param entity LuaEntity
 --- @return FocusWatchdog
 function create.item_held_by_robot(entity)
-    local inventory = entity.get_inventory(defines.inventory.robot_cargo)
-    local first_item = inventory[1]
+    local first_item = entity.get_inventory(defines.inventory.robot_cargo)[1]
     if not first_item.valid_for_read then
-        error("Tried creating watchdog item-held-by-robot for robot that has nothing in cargo")
+        error("Tried creating watchdog item-held-by-robot for robot that has nothing in robot_cargo")
     end
+    local first_order = entity.robot_order_queue[1]
 
     return {
         type = "item-held-by-robot",
@@ -116,7 +110,7 @@ function create.item_held_by_robot(entity)
             quality = first_item.quality
         },
         pin = {
-            inventory = inventory
+            drop_target = first_order.target or first_order.secondary_target
         }
     }
 end

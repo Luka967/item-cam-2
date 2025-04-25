@@ -73,11 +73,11 @@ return function (selected)
     local fn = map[selected.type]
     if fn == nil
         then return end
-    game.print("i have seen "..selected.type)
+    utility.debug("i have seen "..selected.type)
 
     local watching, position, surface_idx = fn(selected)
     if watching ~= nil then
-        game.print("i have acquired "..watching.type)
+        utility.debug("i have acquired "..watching.type)
     end
 
     return watching, position, surface_idx

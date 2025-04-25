@@ -1,5 +1,11 @@
 local utility = {}
 
+function utility.debug(...)
+    if not mods["debug-adapter"]
+        then return end
+    print(game.tick, ...)
+end
+
 --- @param src Vector
 --- @param dst Vector
 --- @param p number
@@ -56,7 +62,7 @@ end
 
 --- @generic T
 --- @param arr T[]
---- @param f_fn fun(entry: T): boolean|nil
+--- @param f_fn fun(entry: T): boolean?
 --- @return T[]
 function utility.filtered(arr, f_fn)
     local ret = {}
@@ -82,8 +88,8 @@ end
 
 --- @generic T
 --- @param arr T[]
---- @param f_fn fun(entry: T, idx: integer): boolean|nil
---- @return T|nil
+--- @param f_fn fun(entry: T, idx: integer): boolean?
+--- @return T?
 function utility.first(arr, f_fn)
     for idx, entry in ipairs(arr) do
         if f_fn(entry, idx) then
@@ -94,8 +100,8 @@ end
 
 --- @generic T
 --- @param arr T[]
---- @param d_fn fun(entry: T): number|nil
---- @return T|nil, number|nil
+--- @param d_fn fun(entry: T): number?
+--- @return T?, number?
 function utility.minimum_of(arr, d_fn)
     if arr == nil
         then return end
@@ -111,14 +117,14 @@ function utility.minimum_of(arr, d_fn)
             local_d = d
         end
     end
-    game.print("minimum_of candidates "..cnt.."/"..#arr)
+    utility.debug("minimum_of candidates "..cnt.."/"..#arr)
 
     return local_minimum, local_d
 end
 
 --- @param belt_entity LuaEntity
---- @param d_fn fun(item: DetailedItemOnLine, line: LuaTransportLine): number|nil
---- @return DetailedItemOnLine|nil, integer|nil
+--- @param d_fn fun(item: DetailedItemOnLine, line: LuaTransportLine): number?
+--- @return DetailedItemOnLine?, integer?
 function utility.minimum_on_belt(belt_entity, d_fn)
     local local_minimum
     local local_line_idx
@@ -140,8 +146,8 @@ function utility.minimum_on_belt(belt_entity, d_fn)
 end
 
 --- @param line LuaTransportLine
---- @param fn fun(item: DetailedItemOnLine): boolean|nil
---- @return DetailedItemOnLine|nil
+--- @param fn fun(item: DetailedItemOnLine): boolean?
+--- @return DetailedItemOnLine?
 function utility.first_on_line(line, fn)
     for _, item in ipairs(line.get_detailed_contents()) do
         if fn(item) then return item end
@@ -149,8 +155,8 @@ function utility.first_on_line(line, fn)
 end
 
 --- @param belt_entity LuaEntity
---- @param fn fun(item: DetailedItemOnLine): boolean|nil
---- @return DetailedItemOnLine|nil, integer|nil
+--- @param fn fun(item: DetailedItemOnLine): boolean?
+--- @return DetailedItemOnLine?, integer?
 function utility.first_on_belt(belt_entity, fn)
     local line_count = belt_entity.get_max_transport_line_index()
     for line_idx = 1, line_count do
@@ -162,8 +168,8 @@ function utility.first_on_belt(belt_entity, fn)
 end
 
 --- @param arr LuaEntity[]
---- @param fn fun(item: DetailedItemOnLine): boolean|nil
---- @return DetailedItemOnLine|nil, integer|nil, LuaEntity|nil
+--- @param fn fun(item: DetailedItemOnLine): boolean?
+--- @return DetailedItemOnLine?, integer?, LuaEntity?
 function utility.first_on_belts(arr, fn)
     for _, belt_entity in ipairs(arr) do
         local item, line_idx = utility.first_on_belt(belt_entity, fn)
@@ -180,7 +186,7 @@ function utility.distance(a, b)
 end
 
 utility.inserter_search_d = 2
-utility.bot_search_d = 0.5
+utility.robot_search_d = 0.5
 
 utility.is_belt = {
     ["transport-belt"] = true,
@@ -197,7 +203,7 @@ utility.is_container = {
     ["cargo-wagon"] = defines.inventory.cargo_wagon
 }
 
-utility.is_bot = {
+utility.is_robot = {
     ["construction-robot"] = true,
     ["logistic-robot"] = true
 }
@@ -218,6 +224,10 @@ utility.all_suitable_robot_order = {
 utility.all_pickup_robot_order = {
     [defines.robot_order_type.pickup] = true,
     [defines.robot_order_type.pickup_items] = true
+}
+utility.all_deliver_robot_order = {
+    [defines.robot_order_type.deliver] = true,
+    [defines.robot_order_type.deliver_items] = true
 }
 
 return utility

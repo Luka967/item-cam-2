@@ -1,6 +1,7 @@
 local focus_behavior = require("script.focus-behavior")
+local utility = require("script.utility")
 
---- @type FocusInstance|nil
+--- @type FocusInstance?
 local focus
 
 script.on_event(defines.events.on_lua_shortcut, function (event)
@@ -33,7 +34,6 @@ script.on_event(defines.events.on_player_selected_area, function (event)
     local new_focus = focus_behavior.acquire_target(player, event.entities[1])
     if new_focus == nil
         then return end
-    game.print("new focus is "..new_focus.watching.type)
     focus_behavior.start_following(new_focus)
     focus = new_focus
 end)
@@ -70,7 +70,7 @@ script.on_event(defines.events.on_tick, function (event)
         focus = nil
         return
     elseif focus.watching.type ~= last_type then
-        game.print("change focus from "..last_type.." to "..focus.watching.type)
+        utility.debug("change focus from "..last_type.." to "..focus.watching.type)
         return
     end
     focus_behavior.update_location(focus)

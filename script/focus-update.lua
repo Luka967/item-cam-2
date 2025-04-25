@@ -1,24 +1,42 @@
 local watchdog = require("focus-watchdog")
 local utility = require("utility")
 
---- @param item? ItemIDAndQualityIDPair
---- @param last_position MapPosition
---- @param area BoundingBox
---- @param surface LuaSurface
-local function watch_inserter_candidate(item, last_position, area, surface)
-    local best_guess = utility.minimum_of(surface.find_entities_filtered({
-        area = area,
-        type = "inserter"
-    }), function (inserter_entity)
-        if item ~= nil then
-            local held_stack = inserter_entity.held_stack
-            if not held_stack.valid_for_read
-                or held_stack.name ~= item.name
-                or held_stack.quality ~= item.quality
-            then return end
-        end
+--- @class WatchInserterCandidateRestrictions
+--- @field source? LuaEntity
+--- @field target? LuaEntity
+--- @field item? ItemIDAndQualityIDPair
+--- @field swinging_towards? boolean
 
-        return utility.distance(last_position, inserter_entity.held_stack_position)
+local __restrictions_noop = {}
+
+--- @param surface LuaSurface
+--- @param search_area BoundingBox
+--- @param ref_pos MapPosition
+--- @param restrictions WatchInserterCandidateRestrictions
+local function watch_inserter_candidate(surface, search_area, ref_pos, restrictions)
+    local best_guess = utility.minimum_of(surface.find_entities_filtered({
+        area = search_area,
+        type = "inserter"
+    }), function (candidate)
+        local held_stack = candidate.held_stack
+        if not held_stack.valid_for_read
+            then return end
+        if restrictions.item ~= nil and (
+            held_stack.name ~= restrictions.item.name
+            or held_stack.quality ~= restrictions.item.quality
+        ) then return end
+        if restrictions.source ~= nil and candidate.pickup_target ~= restrictions.source
+            then return end
+        if restrictions.target ~= nil and candidate.drop_target ~= restrictions.target
+            then return end
+
+        local d_ref_pos_to_hand = utility.distance(ref_pos, candidate.held_stack_position)
+        if
+            restrictions.swinging_towards
+            and utility.distance(ref_pos, candidate.position) < d_ref_pos_to_hand
+        then return end
+
+        return d_ref_pos_to_hand
     end)
 
     if best_guess ~= nil then
@@ -26,21 +44,31 @@ local function watch_inserter_candidate(item, last_position, area, surface)
     end
 end
 
---- @param targeted_entity LuaEntity
-local function watch_bot_candidate(targeted_entity)
-    local targeted_entity_position = targeted_entity.position
+--- @class WatchRobotCandidateRestrictions
+--- @field item? ItemIDAndQualityIDPair
 
-    local best_guess = utility.minimum_of(targeted_entity.surface.find_entities_filtered({
-        area = utility.aabb_expand(targeted_entity.bounding_box, utility.bot_search_d),
+--- @param surface LuaSurface
+--- @param search_area BoundingBox
+--- @param ref_pos MapPosition
+--- @param restrictions WatchRobotCandidateRestrictions
+local function watch_robot_candidate(surface, search_area, ref_pos, restrictions)
+    restrictions = restrictions or __restrictions_noop
+
+    local best_guess = utility.minimum_of(surface.find_entities_filtered({
+        area = search_area,
         type = utility.all_bot
-    }), function (bot_entity)
-        local first_order = bot_entity.robot_order_queue[1]
-        if not utility.all_pickup_robot_order[first_order]
-            then return end
-        if first_order.target ~= targeted_entity and first_order.secondary_target ~= targeted_entity
+    }), function (candidate)
+        local inventory = candidate.get_inventory(defines.inventory.robot_cargo)
+        local first_stack = inventory[1]
+        if not first_stack.valid_for_read
             then return end
 
-        return utility.distance(targeted_entity_position, bot_entity.position)
+        if restrictions.item ~= nil and (
+            first_stack.name ~= restrictions.item.name
+            or first_stack.quality ~= restrictions.item.quality
+        ) then return end
+
+        return utility.distance(ref_pos, candidate.position)
     end)
 
     if best_guess ~= nil then
@@ -96,46 +124,47 @@ end
 local function item_on_belt(focus)
     --- @type PinItemOnBelt
     local pin = focus.watching.pin
-    local belt_entity = focus.watching.handle
+    local handle = focus.watching.handle
 
-    --- @type integer|nil
+    --- @type integer?
     local next_line_idx = pin.line_idx
-    --- @type LuaEntity|nil
-    local next_belt = belt_entity
+    --- @type LuaEntity?
+    local next_belt = handle
 
     local seek_fn = function (item)
         return item.unique_id == pin.id
     end
 
-    local it = utility.first_on_line(belt_entity.get_transport_line(pin.line_idx), seek_fn)
+    local it = utility.first_on_line(handle.get_transport_line(pin.line_idx), seek_fn)
 
     -- Passed through splitter or through part of underground
-    if it == nil and belt_entity.type ~= "transport-belt" then
-        it, next_line_idx = utility.first_on_belt(belt_entity, seek_fn)
+    if it == nil and handle.type ~= "transport-belt" then
+        it, next_line_idx = utility.first_on_belt(handle, seek_fn)
     end
 
     -- Passed to output side of underground
-    if it == nil and belt_entity.type == "underground-belt" and belt_entity.belt_to_ground_type == "input" then
-        it, next_line_idx, next_belt = utility.first_on_belts({belt_entity.neighbours}, seek_fn)
+    if it == nil and handle.type == "underground-belt" and handle.belt_to_ground_type == "input" then
+        it, next_line_idx, next_belt = utility.first_on_belts({handle.neighbours}, seek_fn)
     end
 
     -- Passed to next belt
     if it == nil then
-        it, next_line_idx, next_belt = utility.first_on_belts(belt_entity.belt_neighbours.outputs, seek_fn)
+        it, next_line_idx, next_belt = utility.first_on_belts(handle.belt_neighbours.outputs, seek_fn)
     end
 
     -- Taken by inserter, bot, or deconstructed
     if it == nil then
+        utility.debug("watchdog changing: can't find item on belt with my id")
         focus.watching = watch_inserter_candidate(
-            focus.watching.item,
-            focus.position,
+            handle.surface,
             utility.aabb_around(focus.position, utility.inserter_search_d),
-            belt_entity.surface
+            focus.position,
+            {item = focus.watching.item}
         )
         return true
     end
 
-    if it == nil or next_belt == nil or next_line_idx == nil
+    if it == nil
         then return false end
     focus.watching.handle = next_belt
     pin.it = it
@@ -146,21 +175,14 @@ end
 --- @param focus FocusInstance
 local function item_in_inserter_hand(focus)
     --- @type LuaEntity
-    local inserter_entity = focus.watching.handle
-    --- @type ItemIDAndQualityIDPair
-    local item = focus.watching.item
+    local handle = focus.watching.handle
 
-    if inserter_entity.held_stack.valid_for_read then
-        if item == nil then
-            focus.watching.item = {
-                name = inserter_entity.held_stack.name,
-                quality = inserter_entity.held_stack.quality
-            }
-        end
-        return true
-    end
+    if handle.held_stack.valid_for_read
+        then return true end
 
-    local dropped_into = inserter_entity.drop_target
+    utility.debug("watchdog changing: held_stack.valid_for_read false")
+
+    local dropped_into = handle.drop_target
     if dropped_into == nil
         then return false end
 
@@ -183,30 +205,47 @@ local function item_in_container(focus)
         return true
     end
 
+    utility.debug("watchdog changing: item_count decreased")
+
     --- @type LuaEntity
-    local entity = focus.watching.handle
+    local handle = focus.watching.handle
     -- Taken by bot or inserter
     focus.watching = watch_inserter_candidate(
-        item,
-        entity.position,
-        utility.aabb_expand(entity.bounding_box, utility.inserter_search_d),
-        entity.surface
-    ) or watch_bot_candidate(entity)
+        handle.surface,
+        utility.aabb_expand(handle.bounding_box, utility.inserter_search_d),
+        handle.position,
+        {item = item, swinging_towards = true}
+    ) or watch_robot_candidate(
+        handle.surface,
+        utility.aabb_expand(handle.bounding_box, utility.robot_search_d),
+        handle.position,
+        {item = item}
+    )
     return true
 end
 
 --- @param focus FocusInstance
 local function item_in_crafting_machine(focus)
-    local crafting_entity = focus.watching.handle
-    if crafting_entity.get_recipe() == nil
+    local entity = focus.watching.handle
+    if entity.get_recipe() == nil
         then return false end
 
+    if entity.products_finished == focus.watching.pin.initial_products_finished
+        then return true end
+
+    utility.debug("watchdog changing: products_finished increased")
+
     local first_taken_by = watch_inserter_candidate(
-        nil,
-        crafting_entity.position,
-        utility.aabb_expand(crafting_entity.bounding_box, utility.inserter_search_d),
-        crafting_entity.surface
-    ) or watch_bot_candidate(crafting_entity)
+        entity.surface,
+        utility.aabb_expand(entity.bounding_box, utility.inserter_search_d),
+        entity.position,
+        {source = entity}
+    ) or watch_robot_candidate(
+        entity.surface,
+        utility.aabb_expand(entity.bounding_box, utility.robot_search_d),
+        entity.position,
+        __restrictions_noop
+    )
 
     if first_taken_by ~= nil then
         -- Crafting machine put its first output here
@@ -227,27 +266,18 @@ end
 
 --- @param focus FocusInstance
 local function item_held_by_robot(focus)
-    local robot_entity = focus.watching.handle
+    local handle = focus.watching.handle
 
-    if #robot_entity.robot_order_queue == 0
+    if #handle.robot_order_queue == 0
         then return false end
 
-    local order = robot_entity.robot_order_queue[1]
-    if not utility.all_suitable_robot_order[order.type]
-        then return false end
-    if utility.all_pickup_robot_order[order.type] then
-        -- Pickup order doesn't get dequeued immediately
-        order = robot_entity.robot_order_queue[2]
-    end
+    local order = handle.robot_order_queue[1]
+    if utility.all_deliver_robot_order[order.type]
+        then return true end
 
-    local dropping_to = order.target
+    local dropping_to = focus.watching.pin.drop_target
     if dropping_to == nil or not dropping_to.valid
         then return false end
-
-    --- @type PinItemHeldByRobot
-    local pin = focus.watching.pin
-    if pin.inventory.get_item_count(focus.watching.item) > 0
-        then return true end
 
     return watch_next(focus, dropping_to)
 end

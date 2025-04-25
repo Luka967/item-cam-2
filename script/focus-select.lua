@@ -37,6 +37,14 @@ local function container_with_contents(selected)
 end
 
 --- @param selected LuaEntity
+local function robot_holding_item(selected)
+    local inventory = selected.get_inventory(defines.inventory.robot_cargo)
+    if not inventory[1].valid_for_read
+        then return end
+    return watchdog.create.item_held_by_robot(selected)
+end
+
+--- @param selected LuaEntity
 local function crafting_machine_with_recipe(selected)
     if selected.get_recipe() == nil
         then return end
@@ -55,6 +63,9 @@ for prototype in pairs(utility.is_container) do
 end
 for prototype in pairs(utility.is_crafting_machine) do
     map[prototype] = crafting_machine_with_recipe
+end
+for prototype in pairs(utility.is_robot) do
+    map[prototype] = robot_holding_item
 end
 
 --- @param selected LuaEntity

@@ -44,7 +44,7 @@ local function first_surface()
     end
 end
 
--- local next_tick_registration_number
+local next_tick_registration_number
 script.on_event(defines.events.on_tick, function (event)
     if focus == nil
         then return end
@@ -53,15 +53,26 @@ script.on_event(defines.events.on_tick, function (event)
     if obj_surface == nil
         then return end
 
-    -- local obj = rendering.draw_line({
-    --     from = {0, 0},
-    --     to = {0, 0},
-    --     width = 0,
-    --     color = {0, 0, 0, 0},
-    --     surface = obj_surface
-    -- })
-    -- next_tick_registration_number = script.register_on_object_destroyed(obj)
-    -- obj.destroy()
+    -- on_tick is raised early into game update.
+    -- Player can move their controller past it and tracked entity may get updated in the meantime.
+    -- We can hack in an event raise basically after game update with a RegistrationTarget and its on_object_destroyed.
+    -- Thank you boskid, I hope this becomes standard API later
+    local dummy = rendering.draw_line({
+        from = {0, 0},
+        to = {0, 0},
+        width = 0,
+        color = {0, 0, 0, 0},
+        surface = obj_surface
+    })
+    next_tick_registration_number = script.register_on_object_destroyed(dummy)
+    dummy.destroy()
+end)
+
+script.on_event(defines.events.on_object_destroyed, function (event)
+    if next_tick_registration_number ~= event.registration_number
+        then return end
+    if focus == nil
+        then return end
 
     local last_type = focus.watching.type
     if not focus_behavior.update(focus) then
@@ -73,15 +84,7 @@ script.on_event(defines.events.on_tick, function (event)
         utility.debug("change focus from "..last_type.." to "..focus.watching.type)
         return
     end
+
     focus_behavior.update_location(focus)
     focus.controlling.teleport(focus.position, focus.surface)
 end)
--- script.on_event(defines.events.on_object_destroyed, function (event)
---     if next_tick_registration_number ~= event.registration_number
---         then return end
---     if focus == nil
---         then return end
-
---     focus_behavior.update_location(focus)
---     focus.controlling.teleport(focus.position, focus.surface)
--- end)

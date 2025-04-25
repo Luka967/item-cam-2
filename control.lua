@@ -44,7 +44,7 @@ local function first_surface()
     end
 end
 
-local next_tick_registration_number
+-- local next_tick_registration_number
 script.on_event(defines.events.on_tick, function (event)
     if focus == nil
         then return end
@@ -53,31 +53,35 @@ script.on_event(defines.events.on_tick, function (event)
     if obj_surface == nil
         then return end
 
-    local obj = rendering.draw_line({
-        from = {0, 0},
-        to = {0, 0},
-        width = 0,
-        color = {0, 0, 0, 0},
-        surface = obj_surface
-    })
-    next_tick_registration_number = script.register_on_object_destroyed(obj)
-    obj.destroy()
+    -- local obj = rendering.draw_line({
+    --     from = {0, 0},
+    --     to = {0, 0},
+    --     width = 0,
+    --     color = {0, 0, 0, 0},
+    --     surface = obj_surface
+    -- })
+    -- next_tick_registration_number = script.register_on_object_destroyed(obj)
+    -- obj.destroy()
 
     local last_type = focus.watching.type
     if not focus_behavior.update(focus) then
         game.print("lost focus, last was at "..last_type.." [gps="..focus.position.x..","..focus.position.y.."]")
         focus_behavior.stop_following(focus)
         focus = nil
+        return
     elseif focus.watching.type ~= last_type then
         game.print("change focus from "..last_type.." to "..focus.watching.type)
+        return
     end
-end)
-script.on_event(defines.events.on_object_destroyed, function (event)
-    if next_tick_registration_number ~= event.registration_number
-        then return end
-    if focus == nil
-        then return end
-
     focus_behavior.update_location(focus)
     focus.controlling.teleport(focus.position, focus.surface)
 end)
+-- script.on_event(defines.events.on_object_destroyed, function (event)
+--     if next_tick_registration_number ~= event.registration_number
+--         then return end
+--     if focus == nil
+--         then return end
+
+--     focus_behavior.update_location(focus)
+--     focus.controlling.teleport(focus.position, focus.surface)
+-- end)

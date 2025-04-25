@@ -1,0 +1,223 @@
+local utility = {}
+
+--- @param src Vector
+--- @param dst Vector
+--- @param p number
+--- @return Vector.0
+function utility.lerp(src, dst, p)
+    return {
+        x = src.x + (dst.x - src.x) * p,
+        y = src.y + (dst.y - src.y) * p,
+    }
+end
+
+--- @param src MapPosition
+--- @param dst MapPosition
+--- @return Vector
+function utility.vec_angle(src, dst)
+    local angle = math.atan2(dst.x - src.x, dst.y - src.y)
+    return {
+        x = math.sin(angle),
+        y = math.cos(angle)
+    }
+end
+
+--- @param aabb BoundingBox
+function utility.aabb_center(aabb)
+    return {
+        x = (aabb.right_bottom.x + aabb.left_top.x) / 2,
+        y = (aabb.right_bottom.y + aabb.left_top.y) / 2
+    }
+end
+
+--- @param position MapPosition
+--- @param w number
+--- @param h? number
+--- @return BoundingBox
+function utility.aabb_around(position, w, h)
+    h = h or w
+    return {
+        right_top = {x = position.x - w, y = position.y - h},
+        left_bottom = {x = position.x + w, y = position.y + h}
+    }
+end
+
+--- @param aabb BoundingBox
+--- @param w number
+--- @param h? number
+--- @return BoundingBox
+function utility.aabb_expand(aabb, w, h)
+    h = h or w
+    return {
+        right_top = {x = aabb.left_top.x - w, y = aabb.left_top.y - h},
+        left_bottom = {x = aabb.right_bottom.x + w, y = aabb.right_bottom.y + h}
+    }
+end
+
+--- @generic T
+--- @param arr T[]
+--- @param f_fn fun(entry: T): boolean|nil
+--- @return T[]
+function utility.filtered(arr, f_fn)
+    local ret = {}
+    for _, entry in ipairs(arr) do
+        if f_fn(entry) then
+            table.insert(ret, entry)
+        end
+    end
+    return ret
+end
+
+--- @generic T, U
+--- @param arr T[]
+--- @param m_fn fun(entry: T): U
+--- @return U[]
+function utility.mapped(arr, m_fn)
+    local ret = {}
+    for _, entry in ipairs(arr) do
+        table.insert(ret, m_fn(entry))
+    end
+    return ret
+end
+
+--- @generic T
+--- @param arr T[]
+--- @param f_fn fun(entry: T, idx: integer): boolean|nil
+--- @return T|nil
+function utility.first(arr, f_fn)
+    for idx, entry in ipairs(arr) do
+        if f_fn(entry, idx) then
+            return entry
+        end
+    end
+end
+
+--- @generic T
+--- @param arr T[]
+--- @param d_fn fun(entry: T): number|nil
+--- @return T|nil, number|nil
+function utility.minimum_of(arr, d_fn)
+    if arr == nil
+        then return end
+    local local_minimum
+    local local_d
+
+    local cnt = 0
+    for _, entry in ipairs(arr) do
+        local d = d_fn(entry)
+        if d ~= nil then cnt = cnt + 1 end
+        if d ~= nil and (local_d == nil or d < local_d) then
+            local_minimum = entry
+            local_d = d
+        end
+    end
+    game.print("minimum_of candidates "..cnt.."/"..#arr)
+
+    return local_minimum, local_d
+end
+
+--- @param belt_entity LuaEntity
+--- @param d_fn fun(item: DetailedItemOnLine, line: LuaTransportLine): number|nil
+--- @return DetailedItemOnLine|nil, integer|nil
+function utility.minimum_on_belt(belt_entity, d_fn)
+    local local_minimum
+    local local_line_idx
+    local local_d
+
+    local line_count = belt_entity.get_max_transport_line_index()
+    for line_idx = 1, line_count do
+        local line = belt_entity.get_transport_line(line_idx)
+        for _, item in ipairs(line.get_detailed_contents()) do
+            local d = d_fn(item, line)
+            if d ~= nil and (local_d == nil or d < local_d) then
+                local_minimum = item
+                local_line_idx = line_idx
+                local_d = d
+            end
+        end
+    end
+    return local_minimum, local_line_idx
+end
+
+--- @param line LuaTransportLine
+--- @param fn fun(item: DetailedItemOnLine): boolean|nil
+--- @return DetailedItemOnLine|nil
+function utility.first_on_line(line, fn)
+    for _, item in ipairs(line.get_detailed_contents()) do
+        if fn(item) then return item end
+    end
+end
+
+--- @param belt_entity LuaEntity
+--- @param fn fun(item: DetailedItemOnLine): boolean|nil
+--- @return DetailedItemOnLine|nil, integer|nil
+function utility.first_on_belt(belt_entity, fn)
+    local line_count = belt_entity.get_max_transport_line_index()
+    for line_idx = 1, line_count do
+        local item = utility.first_on_line(belt_entity.get_transport_line(line_idx), fn)
+        if item then
+            return item, line_idx
+        end
+    end
+end
+
+--- @param arr LuaEntity[]
+--- @param fn fun(item: DetailedItemOnLine): boolean|nil
+--- @return DetailedItemOnLine|nil, integer|nil, LuaEntity|nil
+function utility.first_on_belts(arr, fn)
+    for _, belt_entity in ipairs(arr) do
+        local item, line_idx = utility.first_on_belt(belt_entity, fn)
+        if item then
+            return item, line_idx, belt_entity
+        end
+    end
+end
+
+--- @param a Vector
+--- @param b Vector
+function utility.distance(a, b)
+    return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)
+end
+
+utility.inserter_search_d = 2
+utility.bot_search_d = 0.5
+
+utility.is_belt = {
+    ["transport-belt"] = true,
+    ["splitter"] = true,
+    ["underground-belt"] = true
+}
+utility.all_belt = {"transport-belt", "splitter", "underground-belt"}
+
+utility.is_container = {
+    ["container"] = defines.inventory.chest,
+    ["logistic-container"] = defines.inventory.chest,
+    ["infinity-container"] = defines.inventory.chest,
+    ["temporary-container"] = defines.inventory.chest,
+    ["cargo-wagon"] = defines.inventory.cargo_wagon
+}
+
+utility.is_bot = {
+    ["construction-robot"] = true,
+    ["logistic-robot"] = true
+}
+utility.all_bot = {"construction-robot", "logistic-robot"}
+
+utility.is_crafting_machine = {
+    ["furnace"] = true,
+    ["assembling-machine"] = true
+}
+
+utility.all_suitable_robot_order = {
+    [defines.robot_order_type.deliver] = true,
+    [defines.robot_order_type.deliver_items] = true,
+    [defines.robot_order_type.repair] = true,
+    [defines.robot_order_type.pickup] = true,
+    [defines.robot_order_type.pickup_items] = true
+}
+utility.all_pickup_robot_order = {
+    [defines.robot_order_type.pickup] = true,
+    [defines.robot_order_type.pickup_items] = true
+}
+
+return utility

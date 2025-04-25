@@ -8,8 +8,6 @@ local utility = require("utility")
 --- @field item? ItemIDAndQualityIDPair
 --- @field position MapPosition
 --- @field surface LuaSurface
---- @field get_position (fun(): MapPosition)
---- @field get_surface (fun(): LuaSurface)
 
 local create = {}
 

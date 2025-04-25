@@ -107,4 +107,16 @@ function focus_behavior.update(focus)
     return true
 end
 
+--- @param focus FocusInstance
+function focus_behavior.update_location(focus)
+    local watching = focus.watching
+    if not watching.handle.valid
+        then return false end
+
+    focus.position = watchdog.get_position[watching.type](watching)
+    if watching.type_changes_surface then
+        focus.surface = watchdog.get_surface[watching.type](watching)
+    end
+end
+
 return focus_behavior

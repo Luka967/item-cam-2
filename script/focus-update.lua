@@ -275,10 +275,5 @@ return function (focus)
         return false
     end
 
-    local watching = focus.watching
-    focus.position = watchdog.get_position[watchdog.type](watching)
-    if watching.type_changes_surface then
-        focus.surface = watchdog.get_surface[watchdog.type](watching)
-    end
     return true
 end

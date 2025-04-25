@@ -62,12 +62,6 @@ script.on_event(defines.events.on_tick, function (event)
     })
     next_tick_registration_number = script.register_on_object_destroyed(obj)
     obj.destroy()
-end)
-script.on_event(defines.events.on_object_destroyed, function (event)
-    if next_tick_registration_number ~= event.registration_number
-        then return end
-    if focus == nil
-        then return end
 
     local last_type = focus.watching.type
     if not focus_behavior.update(focus) then
@@ -77,4 +71,13 @@ script.on_event(defines.events.on_object_destroyed, function (event)
     elseif focus.watching.type ~= last_type then
         game.print("change focus from "..last_type.." to "..focus.watching.type)
     end
+end)
+script.on_event(defines.events.on_object_destroyed, function (event)
+    if next_tick_registration_number ~= event.registration_number
+        then return end
+    if focus == nil
+        then return end
+
+    focus_behavior.update_location(focus)
+    focus.controlling.teleport(focus.position, focus.surface)
 end)

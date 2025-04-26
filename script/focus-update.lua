@@ -110,11 +110,25 @@ local function watch_next(focus, entity)
     elseif utility.is_crafting_machine[entity_type] then
         return watchdog.create.item_in_crafting_machine(entity)
     elseif utility.is_container[entity_type] then
-        return watchdog.create.item_in_container(
-            entity,
-            utility.is_container[entity_type],
-            focus.watching.item
-        )
+        -- When item is dropped into chest transfer to inserter can happen in same tick.
+        -- If it already has we'd see 0 count of our item in inventory
+        local inventory_type = utility.is_container[entity_type]
+        local inventory = entity.get_inventory(inventory_type)
+        if inventory.get_item_count(focus.watching.item) == 0 then
+            utility.debug("watchdog watch_next: item from container was already taken by inserter")
+            return watch_inserter_candidate(
+                entity.surface,
+                utility.aabb_expand(entity.bounding_box, utility.inserter_search_d),
+                entity.position,
+                {item = focus.watching.item, source = entity}
+            )
+        else
+            return watchdog.create.item_in_container(
+                entity,
+                inventory_type,
+                focus.watching.item
+            )
+        end
     end
 end
 
@@ -255,17 +269,19 @@ local function item_in_crafting_machine(focus)
 
     utility.debug("watchdog changing: products_finished increased")
 
-    local first_taken_by = watch_inserter_candidate(
-        entity.surface,
-        utility.aabb_expand(entity.bounding_box, utility.inserter_search_d),
-        entity.position,
-        {source = entity}
-    ) or watch_robot_candidate(
-        entity.surface,
-        utility.aabb_expand(entity.bounding_box, utility.robot_search_d),
-        entity.position,
-        __restrictions_noop
-    ) or watch_drop_target(focus, entity)
+    local first_taken_by =
+        watch_drop_target(focus, entity)
+        or watch_inserter_candidate(
+            entity.surface,
+            utility.aabb_expand(entity.bounding_box, utility.inserter_search_d),
+            entity.position,
+            {source = entity}
+        ) or watch_robot_candidate(
+            entity.surface,
+            utility.aabb_expand(entity.bounding_box, utility.robot_search_d),
+            entity.position,
+            __restrictions_noop
+        )
 
     if first_taken_by ~= nil then
         -- Crafting machine put its (first) output here
@@ -281,19 +297,24 @@ end
 --- @param focus FocusInstance
 local function item_held_by_robot(focus)
     local handle = focus.watching.handle
-
-    if #handle.robot_order_queue == 0
-        then return false end
+    --- @type PinItemHeldByRobot
+    local pin = focus.watching.pin
+    local drop_target = pin.drop_target
 
     local order = handle.robot_order_queue[1]
-    if utility.all_deliver_robot_order[order.type]
+    if order ~= nil and (
+        order.target == drop_target
+        or order.secondary_target == drop_target
+    ) and utility.all_deliver_robot_order[order.type]
         then return true end
 
-    local dropping_to = focus.watching.pin.drop_target
-    if dropping_to == nil or not dropping_to.valid
+    utility.debug("watchdog changing: first robot order no longer deliver or target changed")
+
+    if drop_target == nil or not drop_target.valid
         then return false end
 
-    focus.watching = watch_next(focus, dropping_to)
+    focus.watching = watch_next(focus, drop_target)
+    return true
 end
 
 local map = {

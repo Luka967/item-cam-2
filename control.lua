@@ -71,16 +71,19 @@ local function first_surface()
     end
 end
 
-local next_tick_registration_number
-script.on_event(defines.events.on_tick, function (event)
-    if not focuses then
-        storage.focuses = storage.focuses or {}
-        focuses = storage.focuses
-    end
+script.on_init(function ()
+    storage.focuses = storage.focuses or {}
+end)
 
+script.on_load(function ()
+    focuses = storage.focuses
+end)
+
+local next_tick_registration_number
+script.on_event(defines.events.on_tick, function ()
     local obj_surface = first_surface()
     if obj_surface == nil
-        then return end
+        then return end -- What?
 
     -- on_tick is raised early into game update.
     -- Player can move their controller past it and tracked entity may get updated in the meantime.

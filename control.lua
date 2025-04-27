@@ -89,15 +89,15 @@ script.on_event(defines.events.on_tick, function ()
     -- Player can move their controller past it and tracked entity may get updated in the meantime.
     -- We can hack in an event raise basically after game update with a RegistrationTarget and its on_object_destroyed.
     -- Thank you boskid, I hope this becomes standard API later
-    local dummy = rendering.draw_line({
+    local foo = rendering.draw_line({
         from = {0, 0},
         to = {0, 0},
         width = 0,
         color = {0, 0, 0, 0},
         surface = obj_surface
     })
-    next_tick_registration_number = script.register_on_object_destroyed(dummy)
-    dummy.destroy()
+    next_tick_registration_number = script.register_on_object_destroyed(foo)
+    foo.destroy()
 end)
 
 --- @param player_idx integer

@@ -511,18 +511,12 @@ local map_after_destroy = {
 --- @param focus FocusInstance
 return function (focus)
     if not focus.watching.handle.valid then
-        local after_destroy_fn = map_after_destroy[focus.watching.type]
-        if not after_destroy_fn then
-            focus.valid = false
-            return false
-        end
-
-        if not after_destroy_fn(focus, focus.watching.handle, focus.watching.pin) then
-            focus.valid = false
-            return false
-        end
-
-        if focus.watching == nil then
+        local fnd = map_after_destroy[focus.watching.type]
+        if
+            not fnd
+            or not fnd(focus, focus.watching.handle, focus.watching.pin)
+            or focus.watching == nil -- After calling fnd
+        then
             focus.valid = false
             return false
         end
@@ -530,15 +524,11 @@ return function (focus)
 
     local fn = map[focus.watching.type]
 
-    if not fn then
-        focus.valid = false
-        return false
-    end
-    if not fn(focus, focus.watching.handle, focus.watching.pin) then
-        focus.valid = false
-        return false
-    end
-    if focus.watching == nil then
+    if
+        not fn
+        or not fn(focus, focus.watching.handle, focus.watching.pin)
+        or focus.watching == nil -- After calling fn
+    then
         focus.valid = false
         return false
     end

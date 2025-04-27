@@ -82,7 +82,7 @@ local function space_platform_hub_with_contents(selected)
     if item_stack == nil
         then return end
 
-    return watchdog.create.item_in_space_platform_hub(selected, {
+    return watchdog.create.item_in_container_with_cargo_hatches(selected, {
         name = item_stack.name,
         quality = item_stack.quality
     })

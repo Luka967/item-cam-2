@@ -118,14 +118,30 @@ end
 --- @class PinItemComingFromMiningDrill
 --- @field last_mining_target? LuaEntity
 --- @field expected_products? string[]
+--- @field tick_should_mine integer
 
 --- @param entity LuaEntity
 --- @return FocusWatchdog
 function create.item_coming_from_mining_drill(entity)
+    if entity.mining_target == nil then
+        error("Tried creating watchdog item-coming-from-mining-drill for drill that has no mining_target")
+    end
+
+    local mining_speed =
+        entity.mining_target.prototype.mineable_properties.mining_time
+        / (entity.prototype.mining_speed * (1 + entity.speed_bonus))
+
+    local remaining_ticks = math.ceil(math.min(
+        mining_speed * (1 - entity.mining_progress),
+        mining_speed * (1 - entity.bonus_mining_progress)
+    ) / (1 / 60))
+
     return {
         type = "item-coming-from-mining-drill",
         handle = entity,
-        pin = {}
+        pin = {
+            tick_should_mine = game.tick + remaining_ticks
+        }
     }
 end
 
@@ -178,11 +194,11 @@ end
 --- @param entity LuaEntity
 --- @param item ItemIDAndQualityIDPair
 --- @return FocusWatchdog
-function create.item_in_space_platform_hub(entity, item)
+function create.item_in_container_with_cargo_hatches(entity, item)
     local inventory = entity.get_inventory(defines.inventory.hub_main)
 
     return {
-        type = "item-in-space-platform-hub",
+        type = "item-in-container-with-cargo-hatches",
         handle = entity,
         item = item,
         pin = {
@@ -217,7 +233,7 @@ local get_position = {
     ["item-in-rocket-silo"] = just_get_handle_pos,
     ["item-in-rocket"] = just_get_handle_pos,
     ["item-in-cargo-pod"] = just_get_handle_pos,
-    ["item-in-space-platform-hub"] = just_get_handle_pos
+    ["item-in-container-with-cargo-hatches"] = just_get_handle_pos
 }
 
 --- @param watchdog FocusWatchdog
@@ -235,7 +251,7 @@ local get_surface = {
     ["item-in-rocket-silo"] = just_get_handle_surface,
     ["item-in-rocket"] = just_get_handle_surface,
     ["item-in-cargo-pod"] = just_get_handle_surface,
-    ["item-in-space-platform-hub"] = just_get_handle_surface
+    ["item-in-container-with-cargo-hatches"] = just_get_handle_surface
 }
 
 return {

@@ -120,6 +120,19 @@ end
 
 --- @generic T
 --- @param arr T[]
+--- @param target T
+--- @return boolean, integer?
+function utility.contains(arr, target)
+    for idx, entry in ipairs(arr) do
+        if entry == target then
+            return true, idx
+        end
+    end
+    return false
+end
+
+--- @generic T
+--- @param arr T[]
 --- @param d_fn fun(entry: T): number?
 --- @return T?, number?
 function utility.minimum_of(arr, d_fn)
@@ -143,7 +156,7 @@ function utility.minimum_of(arr, d_fn)
 end
 
 --- @param belt_entity LuaEntity
---- @param d_fn fun(item: DetailedItemOnLine, line: LuaTransportLine): number?
+--- @param d_fn fun(item: DetailedItemOnLine, line_idx: integer): number?
 --- @return DetailedItemOnLine?, integer?
 function utility.minimum_on_belt(belt_entity, d_fn)
     local local_minimum
@@ -157,7 +170,7 @@ function utility.minimum_on_belt(belt_entity, d_fn)
         local line = belt_entity.get_transport_line(line_idx)
         for _, item in ipairs(line.get_detailed_contents()) do
             total = total + 1
-            local d = d_fn(item, line)
+            local d = d_fn(item, line_idx)
             if d ~= nil then cnt = cnt + 1 end
             if d ~= nil and (local_d == nil or d < local_d) then
                 local_minimum = item
@@ -236,7 +249,7 @@ function utility.mining_products(arg)
         then return end
 
     local prototype = arg.source.prototype
-    if prototype.type ~= "resource-entity"
+    if prototype.type ~= "resource"
         then return end
     if #prototype.mineable_properties.products == 0
         then return end
@@ -257,6 +270,12 @@ end
 
 utility.inserter_search_d = 2
 utility.robot_search_d = 0.5
+utility.mining_drill_drop_belt_line_idx = {
+    [defines.direction.east] = 1,
+    [defines.direction.west] = 2,
+    [defines.direction.north] = 2,
+    [defines.direction.south] = 1
+}
 
 utility.is_belt = {
     ["transport-belt"] = true,
@@ -271,7 +290,8 @@ utility.is_container = {
     ["infinity-container"] = defines.inventory.chest,
     ["temporary-container"] = defines.inventory.chest,
     ["cargo-wagon"] = defines.inventory.cargo_wagon,
-    ["cargo-landing-pad"] = defines.inventory.cargo_landing_pad_main
+    ["cargo-landing-pad"] = defines.inventory.cargo_landing_pad_main,
+    ["space-platform-hub"] = defines.inventory.hub_main
 }
 
 utility.is_robot = {

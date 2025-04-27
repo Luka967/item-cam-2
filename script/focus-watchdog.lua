@@ -189,7 +189,7 @@ function create.item_in_cargo_pod(entity, item)
     }
 end
 
---- @class PinItemInSpacePlatformHub: PinItemInContainer
+--- @class PinItemInContainerWithCargoHatches: PinItemInContainer
 
 --- @param entity LuaEntity
 --- @param item ItemIDAndQualityIDPair

@@ -469,9 +469,8 @@ end
 
 --- @param focus FocusInstance
 --- @param handle LuaEntity
---- @param pin PinItemInCargoPod
+--- @param pin PinItemInContainerWithCargoHatches
 local function item_in_container_with_cargo_hatches(focus, handle, pin)
-    local handle = focus.watching.handle
     local item = focus.watching.item
 
     local first_taken_by =

@@ -9,11 +9,31 @@ end
 --- @param src Vector
 --- @param dst Vector
 --- @param p number
---- @return Vector.0
+--- @return Vector
 function utility.lerp(src, dst, p)
     return {
         x = src.x + (dst.x - src.x) * p,
         y = src.y + (dst.y - src.y) * p,
+    }
+end
+
+--- @param a Vector
+--- @param b Vector
+--- @return Vector
+function utility.vec_add(a, b)
+    return {
+        x = a.x + b.x,
+        y = a.y + b.y
+    }
+end
+
+--- @param a Vector
+--- @param b Vector
+--- @return Vector
+function utility.vec_sub(a, b)
+    return {
+        x = a.x - b.x,
+        y = a.y - b.y
     }
 end
 
@@ -185,10 +205,54 @@ function utility.first_on_belts(arr, fn)
     end
 end
 
+--- @param inventory LuaInventory
+--- @return LuaItemStack?
+function utility.first_readable_item_stack(inventory)
+    if inventory == nil
+        then return end
+    for idx = 1, #inventory do
+        local stack = inventory[idx]
+        if stack.valid_for_read and stack.count > 0 then
+            return inventory[idx]
+        end
+    end
+end
+
 --- @param a Vector
 --- @param b Vector
 function utility.distance(a, b)
     return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)
+end
+
+--- @class UtilityMinableProductsArgs
+--- @field source LuaEntity
+--- @field items? boolean
+--- @field fluids? boolean
+
+--- @param arg UtilityMinableProductsArgs
+--- @return string[]?
+function utility.mining_products(arg)
+    if not arg.source.minable
+        then return end
+
+    local prototype = arg.source.prototype
+    if prototype.type ~= "resource-entity"
+        then return end
+    if #prototype.mineable_properties.products == 0
+        then return end
+
+    local results = {}
+    for _, entry in ipairs(prototype.mineable_properties.products) do
+        if
+            (arg.items and entry.type == "item")
+            or (arg.fluids and entry.type == "fluid")
+        then
+            table.insert(results, entry.name)
+        end
+    end
+    if #results == 0
+        then return end
+    return results
 end
 
 utility.inserter_search_d = 2
@@ -206,7 +270,9 @@ utility.is_container = {
     ["logistic-container"] = defines.inventory.chest,
     ["infinity-container"] = defines.inventory.chest,
     ["temporary-container"] = defines.inventory.chest,
-    ["cargo-wagon"] = defines.inventory.cargo_wagon
+    ["cargo-wagon"] = defines.inventory.cargo_wagon,
+    ["space-platform-hub"] = defines.inventory.chest,
+    ["cargo-landing-pad"] = defines.inventory.cargo_landing_pad_main
 }
 
 utility.is_robot = {

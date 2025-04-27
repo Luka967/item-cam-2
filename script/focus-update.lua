@@ -58,6 +58,10 @@ local function watch_robot_candidate(surface, search_area, ref_pos, restrictions
         area = search_area,
         type = utility.all_bot
     }), function (candidate)
+        -- It would have been nicer to check for a pickup order.
+        -- But because they actually update only every 20 ticks, we'd need a giant surface area scanned every tick
+        -- just so that we catch the bot before it updates when order target (ref_pos) is reached.
+        -- And here we do these checks *after* they update, so the pickup order is gone
         local inventory = candidate.get_inventory(defines.inventory.robot_cargo)
         local first_stack = inventory[1]
         if not first_stack.valid_for_read
@@ -96,50 +100,50 @@ local function watch_newest_item_on_belt_candidate(target_belt_entity, restricti
     end
 end
 
---- @param focus FocusInstance
 --- @param entity LuaEntity
-local function watch_next(focus, entity)
+--- @param item? ItemIDAndQualityIDPair
+local function watch_next(entity, item)
     local entity_type = entity.type
     if utility.is_belt[entity_type] then
         return watch_newest_item_on_belt_candidate(
             entity,
-            {item = focus.watching.item}
+            {item = item}
         )
     elseif entity_type == "inserter" then
         return watchdog.create.item_in_inserter_hand(entity)
     elseif utility.is_crafting_machine[entity_type] then
         return watchdog.create.item_in_crafting_machine(entity)
     elseif utility.is_container[entity_type] then
-        -- When item is dropped into chest transfer to inserter can happen in same tick.
+        -- Transfer to pickup inserter can happen in same tick.
         -- If it already has we'd see 0 count of our item in inventory
         local inventory_type = utility.is_container[entity_type]
         local inventory = entity.get_inventory(inventory_type)
-        if inventory.get_item_count(focus.watching.item) == 0 then
+        if inventory.get_item_count(item) == 0 then
             utility.debug("watchdog watch_next: item from container was already taken by inserter")
             return watch_inserter_candidate(
                 entity.surface,
                 utility.aabb_expand(entity.bounding_box, utility.inserter_search_d),
                 entity.position,
-                {item = focus.watching.item, source = entity}
+                {item = item, source = entity}
             )
         else
             return watchdog.create.item_in_container(
                 entity,
                 inventory_type,
-                focus.watching.item
+                item
             )
         end
     end
 end
 
---- @param focus FocusInstance
 --- @param entity LuaEntity
-local function watch_drop_target(focus, entity)
+--- @param item? ItemIDAndQualityIDPair
+local function watch_drop_target(entity, item)
     if entity.prototype.vector_to_place_result == nil
         then return end
 
     if entity.drop_target ~= nil then
-        return watch_next(focus, entity.drop_target)
+        return watch_next(entity.drop_target, item)
     end
 
     local dropped_item_entity = entity.surface.find_entities_filtered({
@@ -148,7 +152,26 @@ local function watch_drop_target(focus, entity)
     })
     if dropped_item_entity == nil
         then return end
-    return watch_next(focus, dropped_item_entity)
+    return watch_next(dropped_item_entity, item)
+end
+
+--- @param entity LuaEntity
+--- @param item? ItemIDAndQualityIDPair
+--- @param also_drop_target? boolean
+local function watch_taken_out_of_building(entity, item, also_drop_target)
+    return
+        (also_drop_target and watch_drop_target(entity, item))
+        or watch_inserter_candidate(
+            entity.surface,
+            utility.aabb_expand(entity.bounding_box, utility.inserter_search_d),
+            entity.position,
+            {source = entity}
+        ) or watch_robot_candidate(
+            entity.surface,
+            utility.aabb_expand(entity.bounding_box, utility.robot_search_d),
+            entity.position,
+            __restrictions_noop
+        )
 end
 
 --- @param focus FocusInstance
@@ -219,10 +242,12 @@ local function item_in_inserter_hand(focus)
     utility.debug("watchdog changing: held_stack.valid_for_read false")
 
     local dropped_into = handle.drop_target
-    if dropped_into == nil
-        then return false end
+    if dropped_into == nil then
+        utility.debug("watchdog lost: dropped_into nil")
+        return false
+    end
 
-    focus.watching = watch_next(focus, dropped_into)
+    focus.watching = watch_next(dropped_into, focus.watching.item)
     return true
 end
 
@@ -236,6 +261,7 @@ local function item_in_container(focus)
     local item_count = pin.inventory.get_item_count(item)
     if item_count == 0 and pin.last_tick_count == 0 then
         -- Where did it go?
+        utility.debug("watchdog lost: item wasn't even here last tick")
         return false
     elseif item_count >= pin.last_tick_count then
         pin.last_tick_count = item_count
@@ -247,47 +273,25 @@ local function item_in_container(focus)
     --- @type LuaEntity
     local handle = focus.watching.handle
     -- Taken by bot or inserter
-    focus.watching = watch_inserter_candidate(
-        handle.surface,
-        utility.aabb_expand(handle.bounding_box, utility.inserter_search_d),
-        handle.position,
-        {item = item, swinging_towards = true}
-    ) or watch_robot_candidate(
-        handle.surface,
-        utility.aabb_expand(handle.bounding_box, utility.robot_search_d),
-        handle.position,
-        {item = item}
-    )
+    focus.watching = watch_taken_out_of_building(handle, item, true)
     return true
 end
 
 --- @param focus FocusInstance
 local function item_in_crafting_machine(focus)
-    local entity = focus.watching.handle
-    if entity.products_finished == focus.watching.pin.initial_products_finished
+    local handle = focus.watching.handle
+    if handle.products_finished == focus.watching.pin.initial_products_finished
         then return true end
 
     utility.debug("watchdog changing: products_finished increased")
 
-    local first_taken_by =
-        watch_drop_target(focus, entity)
-        or watch_inserter_candidate(
-            entity.surface,
-            utility.aabb_expand(entity.bounding_box, utility.inserter_search_d),
-            entity.position,
-            {source = entity}
-        ) or watch_robot_candidate(
-            entity.surface,
-            utility.aabb_expand(entity.bounding_box, utility.robot_search_d),
-            entity.position,
-            __restrictions_noop
-        )
-
+    local first_taken_by = watch_taken_out_of_building(handle, nil, true)
     if first_taken_by ~= nil then
         -- Crafting machine put its (first) output here
         focus.watching = first_taken_by
-    elseif first_taken_by == nil and entity.get_recipe() == nil then
+    elseif first_taken_by == nil and handle.get_recipe() == nil then
         -- If this is furnace (recycler) and we found no candidates then there were no products
+        utility.debug("watchdog lost: first_taken_by nil and handle no longer has recipe, no result to track")
         return false
     end
 
@@ -313,7 +317,106 @@ local function item_held_by_robot(focus)
     if drop_target == nil or not drop_target.valid
         then return false end
 
-    focus.watching = watch_next(focus, drop_target)
+    focus.watching = watch_next(drop_target, focus.watching.item)
+    return true
+end
+
+
+--- @param focus FocusInstance
+local function item_coming_from_mining_drill(focus)
+    local mining_target = focus.watching.handle.mining_target
+    if mining_target == nil or not mining_target.valid
+        then return false end
+
+    --- @type PinItemComingFromMiningDrill
+    local pin = focus.watching.pin
+    if mining_target ~= pin.last_mining_target or not pin.last_mining_target.valid then
+        utility.debug("watchdog updated: new mining_target")
+        pin.last_mining_target = mining_target
+        pin.expected_products = utility.mining_products{source = mining_target, items = true}
+    end
+    if pin.expected_products == nil then
+        utility.debug("watchdog lost: no expected_products")
+        return false
+    end
+
+    -- TODO
+
+    return true
+end
+
+--- @param focus FocusInstance
+local function item_in_rocket_silo(focus)
+    local handle = focus.watching.handle
+    --- @type PinItemInRocketSilo
+    local pin = focus.watching.pin
+
+    if handle.rocket ~= nil and handle.rocket_silo_status >= defines.rocket_silo_status.launch_starting then
+        utility.debug("watchdog changing: rocket_silo_status launch_started")
+        focus.watching = watchdog.create.item_in_rocket(handle.rocket, focus.watching.item)
+        return true
+    end
+
+    if pin.inventory.get_item_count(focus.watching.item) == 0 then
+        utility.debug("watchdog changing: get_item_count for tracked item 0")
+        focus.watching = watch_taken_out_of_building(handle, focus.watching.item)
+        return true
+    end
+
+    return true
+end
+
+--- @param focus FocusInstance
+local function item_in_rocket(focus)
+    local handle = focus.watching.handle
+
+    if handle.cargo_pod ~= nil and handle.cargo_pod.cargo_pod_state == "ascending" then
+        utility.debug("watchdog changing: cargo_pod_state ascending")
+        focus.watching = watchdog.create.item_in_cargo_pod(
+            handle.cargo_pod,
+            focus.watching.item,
+            handle
+        )
+        return true
+    end
+
+    return true
+end
+
+--- @param focus FocusInstance
+local function item_in_cargo_pod(focus)
+    local handle = focus.watching.handle
+    --- @type PinItemInCargoPod
+    local pin = focus.watching.pin
+
+    if pin.drop_target == nil and handle.cargo_pod_state == "parking" then
+        local destination = handle.cargo_pod_destination
+        if destination.type ~= defines.cargo_destination.station then
+            utility.debug("watchdog lost: cargo_pod_destination is not station")
+            return false
+        end
+        utility.debug("watchdog updated: drop_target selected")
+        pin.drop_target = destination.station
+        return true
+    end
+
+    if pin.rocket_entity ~= nil then
+        if pin.rocket_entity.valid then
+            pin.last_position = handle.position
+        else
+            utility.debug("watchdog updated: rocket_entity destroyed")
+            pin.rocket_entity = nil
+        end
+    end
+
+    -- The actual watchdog switch happens after destroy
+    return true
+end
+
+local function item_in_cargo_pod_after_destroy(focus)
+    --- @type PinItemInCargoPod
+    local pin = focus.watching.pin
+    focus.watching = watch_next(pin.drop_target, focus.watching.item)
     return true
 end
 
@@ -323,14 +426,24 @@ local map = {
     ["item-in-inserter-hand"] = item_in_inserter_hand,
     ["item-in-container"] = item_in_container,
     ["item-in-crafting-machine"] = item_in_crafting_machine,
-    ["item-held-by-robot"] = item_held_by_robot
+    ["item-held-by-robot"] = item_held_by_robot,
+    ["item-coming-from-mining-drill"] = item_coming_from_mining_drill,
+    ["item-in-rocket-silo"] = item_in_rocket_silo,
+    ["item-in-rocket"] = item_in_rocket,
+    ["item-in-cargo-pod"] = item_in_cargo_pod
+}
+local map_after_destroy = {
+    ["item-in-cargo-pod"] = item_in_cargo_pod_after_destroy
 }
 
 --- @param focus FocusInstance
 return function (focus)
     if not focus.watching.handle.valid then
-        focus.valid = false
-        return false
+        local after_destroy_fn = map_after_destroy[focus.watching.type]
+        if not after_destroy_fn or not after_destroy_fn(focus) or focus.watching == nil then
+            focus.valid = false
+            return false
+        end
     end
 
     local fn = map[focus.watching.type]

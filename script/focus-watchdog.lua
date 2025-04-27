@@ -115,27 +115,105 @@ function create.item_held_by_robot(entity)
     }
 end
 
+--- @class PinItemComingFromMiningDrill
+--- @field last_mining_target? LuaEntity
+--- @field expected_products? string[]
+
+--- @param entity LuaEntity
+--- @return FocusWatchdog
+function create.item_coming_from_mining_drill(entity)
+    return {
+        type = "item-coming-from-mining-drill",
+        handle = entity,
+        pin = {}
+    }
+end
+
+--- @class PinItemInRocketSilo
+--- @field inventory LuaInventory
+
+--- @param entity LuaEntity
+--- @param item ItemIDAndQualityIDPair
+--- @return FocusWatchdog
+function create.item_in_rocket_silo(entity, item)
+    return {
+        type = "item-in-rocket-silo",
+        handle = entity,
+        item = item,
+        pin = {
+            inventory = entity.get_inventory(defines.inventory.rocket_silo_rocket)
+        }
+    }
+end
+
+--- @param entity LuaEntity
+--- @param item ItemIDAndQualityIDPair
+--- @return FocusWatchdog
+function create.item_in_rocket(entity, item)
+    return {
+        type = "item-in-rocket",
+        handle = entity,
+        item = item
+    }
+end
+
+--- @class PinItemInCargoPod
+--- @field rocket_entity? LuaEntity
+--- @field last_position? MapPosition
+--- @field drop_target? LuaEntity
+
+--- @param entity LuaEntity
+--- @param item ItemIDAndQualityIDPair
+--- @param rocket_entity LuaEntity
+--- @return FocusWatchdog
+function create.item_in_cargo_pod(entity, item, rocket_entity)
+    return {
+        type = "item-in-cargo-pod",
+        type_changes_surface = true,
+        handle = entity,
+        item = item,
+        pin = {
+            rocket_entity = rocket_entity,
+            last_position = entity.position
+        }
+    }
+end
 
 --- @param watchdog FocusWatchdog
 local function just_get_handle_pos(watchdog)
     return watchdog.handle.position
 end
+--- @param watchdog FocusWatchdog
+local function just_get_handle_selection_box(watchdog)
+    return utility.aabb_center(watchdog.handle.selection_box)
+end
 --- @type table<string, fun(watchdog: FocusWatchdog): MapPosition>
 local get_position = {
-    ["entity-direct"] = just_get_handle_pos,
     ["item-in-container"] = just_get_handle_pos,
-    ["item-in-crafting-machine"] = just_get_handle_pos,
-    ["item-in-inserter-hand"] = function (watchdog)
-        return watchdog.handle.held_stack_position
-    end,
     ["item-on-belt"] = function (watchdog)
         return watchdog.handle.get_line_item_position(watchdog.pin.line_idx, watchdog.pin.it.position)
     end,
-    ["item-held-by-robot"] = function (watchdog)
-        -- Position here is not always updated for optimization purposes.
-        -- Hats off to boskid for telling me I can use selection_box
-        -- which hooks to the proper, rendered position instead
-        return utility.aabb_center(watchdog.handle.selection_box)
+    ["item-in-inserter-hand"] = function (watchdog)
+        return watchdog.handle.held_stack_position
+    end,
+    ["item-in-crafting-machine"] = just_get_handle_pos,
+    -- Position here is not always updated for optimization purposes.
+    -- Hats off to boskid for telling me I can use selection_box
+    -- which hooks to the proper, rendered position instead
+    ["item-held-by-robot"] = just_get_handle_selection_box,
+    ["item-coming-from-mining-drill"] = just_get_handle_pos,
+    ["item-in-rocket-silo"] = just_get_handle_pos,
+    ["item-in-rocket"] = just_get_handle_pos,
+    ["item-in-cargo-pod"] = function (watchdog)
+        local handle = watchdog.handle
+        --- @type PinItemInCargoPod
+        local pin = watchdog.pin
+
+        if handle.cargo_pod_state == "descending" or handle.cargo_pod_state == "parking" then
+            return handle.position
+        else
+            return pin.last_position
+        end
     end
 }
 
@@ -145,12 +223,15 @@ local function just_get_handle_surface(watchdog)
 end
 --- @type table<string, fun(watchdog: FocusWatchdog): LuaSurface>
 local get_surface = {
-    ["entity-direct"] = just_get_handle_surface,
     ["item-in-container"] = just_get_handle_surface,
     ["item-in-crafting-machine"] = just_get_handle_surface,
     ["item-held-by-robot"] = just_get_handle_surface,
     ["item-in-inserter-hand"] = just_get_handle_surface,
-    ["item-on-belt"] = just_get_handle_surface
+    ["item-on-belt"] = just_get_handle_surface,
+    ["item-coming-from-mining-drill"] = just_get_handle_surface,
+    ["item-in-rocket-silo"] = just_get_handle_surface,
+    ["item-in-rocket"] = just_get_handle_surface,
+    ["item-in-cargo-pod"] = just_get_handle_surface
 }
 
 return {

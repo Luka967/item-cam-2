@@ -158,23 +158,36 @@ function create.item_in_rocket(entity, item)
 end
 
 --- @class PinItemInCargoPod
---- @field rocket_entity? LuaEntity
---- @field last_position? MapPosition
 --- @field drop_target? LuaEntity
 
 --- @param entity LuaEntity
 --- @param item ItemIDAndQualityIDPair
---- @param rocket_entity LuaEntity
 --- @return FocusWatchdog
-function create.item_in_cargo_pod(entity, item, rocket_entity)
+function create.item_in_cargo_pod(entity, item)
     return {
         type = "item-in-cargo-pod",
         type_changes_surface = true,
         handle = entity,
         item = item,
+        pin = {}
+    }
+end
+
+--- @class PinItemInSpacePlatformHub: PinItemInContainer
+
+--- @param entity LuaEntity
+--- @param item ItemIDAndQualityIDPair
+--- @return FocusWatchdog
+function create.item_in_space_platform_hub(entity, item)
+    local inventory = entity.get_inventory(defines.inventory.hub_main)
+
+    return {
+        type = "item-in-space-platform-hub",
+        handle = entity,
+        item = item,
         pin = {
-            rocket_entity = rocket_entity,
-            last_position = entity.position
+            inventory = inventory,
+            last_tick_count = inventory.get_item_count(item)
         }
     }
 end
@@ -197,24 +210,14 @@ local get_position = {
         return watchdog.handle.held_stack_position
     end,
     ["item-in-crafting-machine"] = just_get_handle_pos,
-    -- Position here is not always updated for optimization purposes.
-    -- Hats off to boskid for telling me I can use selection_box
-    -- which hooks to the proper, rendered position instead
+    -- Position here is not always updated because of game engine optimizations.
+    -- Hats off to boskid for telling me I can use selection_box which hooks to the proper, rendered position instead
     ["item-held-by-robot"] = just_get_handle_selection_box,
     ["item-coming-from-mining-drill"] = just_get_handle_pos,
     ["item-in-rocket-silo"] = just_get_handle_pos,
     ["item-in-rocket"] = just_get_handle_pos,
-    ["item-in-cargo-pod"] = function (watchdog)
-        local handle = watchdog.handle
-        --- @type PinItemInCargoPod
-        local pin = watchdog.pin
-
-        if handle.cargo_pod_state == "descending" or handle.cargo_pod_state == "parking" then
-            return handle.position
-        else
-            return pin.last_position
-        end
-    end
+    ["item-in-cargo-pod"] = just_get_handle_pos,
+    ["item-in-space-platform-hub"] = just_get_handle_pos
 }
 
 --- @param watchdog FocusWatchdog
@@ -231,7 +234,8 @@ local get_surface = {
     ["item-coming-from-mining-drill"] = just_get_handle_surface,
     ["item-in-rocket-silo"] = just_get_handle_surface,
     ["item-in-rocket"] = just_get_handle_surface,
-    ["item-in-cargo-pod"] = just_get_handle_surface
+    ["item-in-cargo-pod"] = just_get_handle_surface,
+    ["item-in-space-platform-hub"] = just_get_handle_surface
 }
 
 return {

@@ -7,12 +7,11 @@ Things it can track right now:
 - Furnaces, assemblers, etc. with recipe that has some item output
 - Chests, train wagons
 - Bots picking up and delivering items
-- Rockets and their cargo pod
+- Rockets, space platform hubs and their cargo pods
 
 Things that are planned to be trackable:
 - Mining drill with item output
 - (Non-SA) Output from rocket
-- Space platform hub and its dropping cargo pods
 - Fluids in general - fluid wagons, pumps
 - Crafting machine with recipe that has only fluid output
 - Loaders, linked belts

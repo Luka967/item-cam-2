@@ -372,15 +372,35 @@ local function item_in_rocket(focus)
 
     if handle.cargo_pod ~= nil and handle.cargo_pod.cargo_pod_state == "ascending" then
         utility.debug("watchdog changing: cargo_pod_state ascending")
-        focus.watching = watchdog.create.item_in_cargo_pod(
-            handle.cargo_pod,
-            focus.watching.item,
-            handle
-        )
+        focus.watching = watchdog.create.item_in_cargo_pod(handle.cargo_pod, focus.watching.item)
         return true
     end
 
     return true
+end
+
+--- @param destination CargoDestination
+local function select_pod_drop_target(destination)
+    if destination.type ~= defines.cargo_destination.station then
+        utility.debug("watchdog select_pod_drop_target: cargo_pod_destination is not station")
+        return nil
+    end
+    local target = destination.station
+    if target == nil then
+        utility.debug("watchdog select_pod_drop_target: station is nil")
+        return nil
+    end
+    if target.type == "space-platform-hub" or target.type == "space-platform-landing-pad"
+        then return target end
+    if target.type == "cargo-bay" then
+        if destination.space_platform ~= nil
+            then return destination.space_platform.hub end
+        if destination.surface ~= nil then
+            -- TODO
+            utility.debug("watchdog select_pod_drop_target: going to cargo-bay but can't associate landing pad")
+            return nil
+        end
+    end
 end
 
 --- @param focus FocusInstance
@@ -390,34 +410,65 @@ local function item_in_cargo_pod(focus)
     local pin = focus.watching.pin
 
     if pin.drop_target == nil and handle.cargo_pod_state == "parking" then
-        local destination = handle.cargo_pod_destination
-        if destination.type ~= defines.cargo_destination.station then
-            utility.debug("watchdog lost: cargo_pod_destination is not station")
-            return false
-        end
+        local destination = select_pod_drop_target(handle.cargo_pod_destination)
+
         utility.debug("watchdog updated: drop_target selected")
         pin.drop_target = destination.station
         return true
-    end
-
-    if pin.rocket_entity ~= nil then
-        if pin.rocket_entity.valid then
-            pin.last_position = handle.position
-        else
-            utility.debug("watchdog updated: rocket_entity destroyed")
-            pin.rocket_entity = nil
-        end
     end
 
     -- The actual watchdog switch happens after destroy
     return true
 end
 
+--- @param focus FocusInstance
 local function item_in_cargo_pod_after_destroy(focus)
     --- @type PinItemInCargoPod
     local pin = focus.watching.pin
     focus.watching = watch_next(pin.drop_target, focus.watching.item)
     return true
+end
+
+--- @param entity LuaEntity
+local function watch_outgoing_cargo_pod(entity, item)
+    local has_busy_outgoing_hatch = utility.first(entity.cargo_hatches, function (hatch)
+        return hatch.is_output_compatible and (hatch.busy or hatch.reserved)
+    end)
+    if not has_busy_outgoing_hatch
+        then return end
+
+    local nearby_pod = entity.surface.find_entities_filtered({
+        area = entity.bounding_box,
+        type = {"cargo-pod"}
+    })
+    for _, candidate in ipairs(nearby_pod) do
+        local inventory = candidate.get_inventory(defines.inventory.cargo_unit)
+        if inventory.get_item_count(item) > 0 then
+            return watchdog.create.item_in_cargo_pod(candidate, item)
+        end
+    end
+end
+
+--- @param focus FocusInstance
+local function item_in_space_platform_hub(focus)
+    local handle = focus.watching.handle
+    local item = focus.watching.item
+
+    local first_taken_by =
+        watch_outgoing_cargo_pod(handle, item)
+        or utility.first(handle.get_cargo_bays(), function (bay)
+            if not bay.valid
+                then return end
+            return watch_outgoing_cargo_pod(bay, item)
+        end)
+
+    if first_taken_by ~= nil then
+        focus.watching = first_taken_by
+        return true
+    end
+
+    -- It's also a container. Inherit container update behavior
+    return item_in_container(focus)
 end
 
 local map = {
@@ -430,7 +481,8 @@ local map = {
     ["item-coming-from-mining-drill"] = item_coming_from_mining_drill,
     ["item-in-rocket-silo"] = item_in_rocket_silo,
     ["item-in-rocket"] = item_in_rocket,
-    ["item-in-cargo-pod"] = item_in_cargo_pod
+    ["item-in-cargo-pod"] = item_in_cargo_pod,
+    ["item-in-space-platform-hub"] = item_in_space_platform_hub
 }
 local map_after_destroy = {
     ["item-in-cargo-pod"] = item_in_cargo_pod_after_destroy

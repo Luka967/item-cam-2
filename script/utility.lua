@@ -106,15 +106,15 @@ function utility.mapped(arr, m_fn)
     return ret
 end
 
---- @generic T
+--- @generic T, U
 --- @param arr T[]
---- @param f_fn fun(entry: T, idx: integer): boolean?
---- @return T?
+--- @param f_fn fun(entry: T, idx: integer): U?
+--- @return U?
 function utility.first(arr, f_fn)
     for idx, entry in ipairs(arr) do
-        if f_fn(entry, idx) then
-            return entry
-        end
+        local r_fn = f_fn(entry, idx)
+        if r_fn
+            then return r_fn end
     end
 end
 
@@ -271,7 +271,6 @@ utility.is_container = {
     ["infinity-container"] = defines.inventory.chest,
     ["temporary-container"] = defines.inventory.chest,
     ["cargo-wagon"] = defines.inventory.cargo_wagon,
-    ["space-platform-hub"] = defines.inventory.chest,
     ["cargo-landing-pad"] = defines.inventory.cargo_landing_pad_main
 }
 

@@ -11,7 +11,7 @@ end
 --- @param selected LuaEntity
 local function belt_with_items_on_it(selected)
     local line_count = selected.get_max_transport_line_index()
-    for line_idx = 1, line_count, 1 do
+    for line_idx = 1, line_count do
         local line = selected.get_transport_line(line_idx)
         if #line > 0 then
             return watchdog.create.item_on_belt(line.get_detailed_contents()[1], line_idx, selected)
@@ -75,10 +75,24 @@ local function rocket_silo_with_contents(selected)
     })
 end
 
+--- @param selected LuaEntity
+local function space_platform_hub_with_contents(selected)
+    local inventory = selected.get_inventory(defines.inventory.hub_main)
+    local item_stack = utility.first_readable_item_stack(inventory)
+    if item_stack == nil
+        then return end
+
+    return watchdog.create.item_in_space_platform_hub(selected, {
+        name = item_stack.name,
+        quality = item_stack.quality
+    })
+end
+
 local map = {
     ["inserter"] = inserter_with_item_in_hand,
     ["mining-drill"] = mining_drill_with_resource,
-    ["rocket-silo"] = rocket_silo_with_contents
+    ["rocket-silo"] = rocket_silo_with_contents,
+    ["space-platform-hub"] = space_platform_hub_with_contents
 }
 for prototype in pairs(utility.is_belt) do
     map[prototype] = belt_with_items_on_it

@@ -1,7 +1,7 @@
 local utility = {}
 
 function utility.debug(...)
-    if not script.active_mods["debugadapter"]
+    if not script.active_mods["debugadapter"] or not settings.global["debug-tracker"].value
         then return end
     print(game.tick, ...)
 end
@@ -270,11 +270,32 @@ end
 
 utility.inserter_search_d = 2
 utility.robot_search_d = 0.5
+-- Mining drill direction -> belt piece direction -> target line_idx
 utility.mining_drill_drop_belt_line_idx = {
-    [defines.direction.east] = 1,
-    [defines.direction.west] = 2,
-    [defines.direction.north] = 2,
-    [defines.direction.south] = 1
+    [defines.direction.east] = {
+        [defines.direction.north] = 1,
+        [defines.direction.south] = 2,
+        [defines.direction.west] = 2,
+        [defines.direction.east] = 2,
+    },
+    [defines.direction.west] = {
+        [defines.direction.north] = 2,
+        [defines.direction.south] = 1,
+        [defines.direction.west] = 2,
+        [defines.direction.east] = 2,
+    },
+    [defines.direction.north] = {
+        [defines.direction.east] = 1,
+        [defines.direction.west] = 2,
+        [defines.direction.north] = 2,
+        [defines.direction.south] = 2,
+    },
+    [defines.direction.south] = {
+        [defines.direction.east] = 2,
+        [defines.direction.west] = 1,
+        [defines.direction.north] = 2,
+        [defines.direction.south] = 2
+    },
 }
 
 utility.is_belt = {
@@ -291,7 +312,8 @@ utility.is_container = {
     ["temporary-container"] = defines.inventory.chest,
     ["cargo-wagon"] = defines.inventory.cargo_wagon,
     ["cargo-landing-pad"] = defines.inventory.cargo_landing_pad_main,
-    ["space-platform-hub"] = defines.inventory.hub_main
+    ["space-platform-hub"] = defines.inventory.hub_main,
+    ["rocket-silo"] = defines.inventory.rocket_silo_rocket
 }
 
 utility.is_robot = {

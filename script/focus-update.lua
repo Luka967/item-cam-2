@@ -123,6 +123,9 @@ local function watch_next(entity, item)
         local inventory = entity.get_inventory(inventory_type)
 
         if inventory.get_item_count(item) > 0 then
+            -- TODO: Coalesce the copypaste
+            if entity.type == "rocket-silo"
+                then return watchdog.create.item_in_rocket_silo(entity, item) end
             if #entity.cargo_hatches > 0
                 then return watchdog.create.item_in_container_with_cargo_hatches(entity, item) end
             return watchdog.create.item_in_container(entity, inventory_type, item)
@@ -345,9 +348,10 @@ local function item_coming_from_mining_drill(focus, handle, pin)
     if drop_target ~= nil then
         if not utility.is_belt[drop_target.type] then
             focus.watching = watch_next(drop_target)
+            return true
         end
 
-        local drop_line_idx = utility.mining_drill_drop_belt_line_idx[handle.direction]
+        local drop_line_idx = utility.mining_drill_drop_belt_line_idx[handle.direction][drop_target.direction]
 
         local best_guess, line_idx = utility.minimum_on_belt(drop_target, function (candidate, line_idx)
             if line_idx ~= drop_line_idx or not utility.contains(pin.expected_products, candidate.stack.name)
@@ -361,13 +365,12 @@ local function item_coming_from_mining_drill(focus, handle, pin)
         if best_guess and line_idx then
             focus.watching = watchdog.create.item_on_belt(best_guess, line_idx, drop_target)
         end
-    else
-        -- TODO: It drops on ground
-        utility.debug("watchdog lost: TODO: drill drops on ground, find the item")
-        return false
+        return true
     end
 
-    return true
+    -- TODO: It drops on ground
+    utility.debug("watchdog lost: TODO: drill drops on ground, find the item")
+    return false
 end
 
 --- @param focus FocusInstance
@@ -461,7 +464,11 @@ local function watch_outgoing_cargo_pod(entity, item)
     })
     for _, candidate in ipairs(nearby_pod) do
         local inventory = candidate.get_inventory(defines.inventory.cargo_unit)
-        if inventory.get_item_count(item) > 0 then
+        if
+            (candidate.cargo_pod_state == "awaiting_launch"
+            or candidate.cargo_pod_state == "ascending")
+            and inventory.get_item_count(item) > 0
+        then
             return watchdog.create.item_in_cargo_pod(candidate, item)
         end
     end

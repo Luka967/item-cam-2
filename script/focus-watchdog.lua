@@ -61,9 +61,8 @@ end
 --- @param entity LuaEntity
 --- @return FocusWatchdog
 function create.item_in_inserter_hand(entity)
-    if not entity.held_stack.valid_for_read then
-        error("Tried creating watchdog item-in-inserter-hand for inserter that has nothing in hand")
-    end
+    assert(entity.held_stack.valid_for_read, "Tried creating watchdog item-in-inserter-hand for inserter that has nothing in hand")
+
     return {
         type = "item-in-inserter-hand",
         handle = entity,
@@ -97,11 +96,9 @@ end
 --- @return FocusWatchdog
 function create.item_held_by_robot(entity)
     local first_item = entity.get_inventory(defines.inventory.robot_cargo)[1]
-    if not first_item.valid_for_read then
-        error("Tried creating watchdog item-held-by-robot for robot that has nothing in robot_cargo")
-    end
-    local first_order = entity.robot_order_queue[1]
+    assert(first_item.valid_for_read, "Tried creating watchdog item-held-by-robot for robot that has nothing in robot_cargo")
 
+    local first_order = entity.robot_order_queue[1]
     return {
         type = "item-held-by-robot",
         handle = entity,
@@ -123,9 +120,7 @@ end
 --- @param entity LuaEntity
 --- @return FocusWatchdog
 function create.item_coming_from_mining_drill(entity)
-    if entity.mining_target == nil then
-        error("Tried creating watchdog item-coming-from-mining-drill for drill that has no mining_target")
-    end
+    assert(entity.mining_target ~= nil, "Tried creating watchdog item-coming-from-mining-drill for drill that has no mining_target")
 
     local mining_speed =
         entity.mining_target.prototype.mineable_properties.mining_time

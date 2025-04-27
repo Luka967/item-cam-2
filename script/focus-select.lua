@@ -30,10 +30,17 @@ local function container_with_contents(selected)
     if item_stack == nil
         then return end
 
-    return watchdog.create.item_in_container(selected, inventory_type, {
+    local item = {
         name = item_stack.name,
         quality = item_stack.quality
-    })
+    }
+
+    -- TODO: Coalesce the copypaste
+    if selected.type == "rocket-silo"
+        then return watchdog.create.item_in_rocket_silo(selected, item) end
+    if #selected.cargo_hatches > 0
+        then return watchdog.create.item_in_container_with_cargo_hatches(selected, item) end
+    return watchdog.create.item_in_container(selected, inventory_type, item)
 end
 
 --- @param selected LuaEntity
@@ -62,37 +69,9 @@ local function mining_drill_with_resource(selected)
     return watchdog.create.item_coming_from_mining_drill(selected)
 end
 
---- @param selected LuaEntity
-local function rocket_silo_with_contents(selected)
-    local inventory = selected.get_inventory(defines.inventory.rocket_silo_rocket)
-    local item_stack = utility.first_readable_item_stack(inventory)
-    if item_stack == nil
-        then return end
-
-    return watchdog.create.item_in_rocket_silo(selected, {
-        name = item_stack.name,
-        quality = item_stack.quality
-    })
-end
-
---- @param selected LuaEntity
-local function space_platform_hub_with_contents(selected)
-    local inventory = selected.get_inventory(defines.inventory.hub_main)
-    local item_stack = utility.first_readable_item_stack(inventory)
-    if item_stack == nil
-        then return end
-
-    return watchdog.create.item_in_container_with_cargo_hatches(selected, {
-        name = item_stack.name,
-        quality = item_stack.quality
-    })
-end
-
 local map = {
     ["inserter"] = inserter_with_item_in_hand,
-    ["mining-drill"] = mining_drill_with_resource,
-    ["rocket-silo"] = rocket_silo_with_contents,
-    ["space-platform-hub"] = space_platform_hub_with_contents
+    ["mining-drill"] = mining_drill_with_resource
 }
 for prototype in pairs(utility.is_belt) do
     map[prototype] = belt_with_items_on_it

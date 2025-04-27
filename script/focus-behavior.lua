@@ -8,6 +8,7 @@ local focus_behavior = {}
 --- @field previous_controller defines.controllers
 --- @field previous_surface_idx integer
 --- @field previous_position MapPosition
+--- @field previous_character? LuaEntity
 --- @field controlling LuaPlayer
 --- @field watching FocusWatchdog
 --- @field position MapPosition
@@ -27,6 +28,7 @@ function focus_behavior.acquire_target(controlling, watching)
         previous_controller = controlling.controller_type,
         previous_surface_idx = controlling.surface_index,
         previous_position = controlling.position,
+        previous_character = controlling.character,
         controlling = controlling,
         watching = watching,
         position = watchdog.get_position[watching.type](watching),
@@ -34,6 +36,16 @@ function focus_behavior.acquire_target(controlling, watching)
         valid = true
     }
     return ret
+end
+
+--- @param player LuaPlayer
+--- @param to boolean
+local function toggle_gui_elements(player, to)
+    player.game_view_settings.show_controller_gui = to
+    player.game_view_settings.show_entity_tooltip = to
+    player.game_view_settings.show_minimap = to
+    player.game_view_settings.show_research_info = to
+    player.game_view_settings.show_side_menu = to
 end
 
 --- @param focus FocusInstance
@@ -56,9 +68,8 @@ function focus_behavior.start_following(focus)
         }
     end
 
-    if player.controller_type ~= defines.controllers.god then
-        player.set_controller({type = defines.controllers.god})
-    end
+    player.set_controller({type = defines.controllers.ghost})
+    toggle_gui_elements(player, false)
 
     -- Set initial
     player.teleport(focus.position, focus.surface)
@@ -67,25 +78,32 @@ end
 
 --- @param focus FocusInstance
 function focus_behavior.stop_following(focus)
+    local player = focus.controlling
+
     focus.valid = false
-    focus.controlling.set_shortcut_toggled("item-cam", false)
+    player.set_shortcut_toggled("item-cam", false)
 
     if focus.previous_controller == defines.controllers.editor then
-        focus.controlling.toggle_map_editor()
+        player.toggle_map_editor()
     else
-        focus.controlling.set_controller({
-            type = focus.previous_controller
+        player.set_controller({
+            type = focus.previous_controller,
+            character = focus.previous_character
         })
     end
+    toggle_gui_elements(player, true)
+
     if game.get_surface(focus.previous_surface_idx) == nil then
-        focus.controlling.print("Previous surface is gone. I don't know where to teleport you")
+        player.print("Previous surface is gone. I don't know where to teleport you")
+        player.teleport({0, 0}, "nauvis")
     else
-        focus.controlling.teleport(focus.previous_position, focus.previous_surface_idx)
+        player.teleport(focus.previous_position, focus.previous_surface_idx)
     end
 end
 
 local allowed_controllers = {
     [defines.controllers.god] = true,
+    [defines.controllers.ghost] = true,
     [defines.controllers.spectator] = true
 }
 

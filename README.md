@@ -1,17 +1,19 @@
 # Item Cam 2
-Follow an item as around your base like in the Factorio trailer. Spiritual successor to DaveMcW's Item Cam, rewritten for 2.0 and eventual Space Age content support.
+Follow an item as around your base like in the Factorio trailer. Spiritual successor to DaveMcW's Item Cam, rewritten for 2.0 and Space Age content support.
 
-Things it can track right now:
+## Things it can track right now
 - Belts, splitters, undergrounds, any and all sideload configurations
-- Inserters
-- Furnaces, assemblers, etc. with recipe that has some item output
-- Chests, train wagons
-- Bots picking up and delivering items
-- Rockets, space platform hubs and their cargo pods
+- Mining drills, assemblers, furnaces (recyclers), etc. with resource/recipe that has some item output
+- Inserters, chests, train cargo wagons
+- Logistic bots picking up and delivering items
+- Space Age content: rockets with cargo, space platform hubs and their pods
 
-Things that are planned to be trackable:
-- Mining drill with item output
-- (Non-SA) Output from rocket
+## Limitations
+- Platform hubs/landing pads and chests with huge inventories might incur a UPS hit
+- Inserters and mining drills shuffling items on ground can't be tracked
+
+## Things that are planned to be trackable:
 - Fluids in general - fluid wagons, pumps
-- Crafting machine with recipe that has only fluid output
-- Loaders, linked belts
+- Crafting machines with recipes that have only fluid output
+- Non-SA satellite's Space science pack output
+- Loaders, linked belts, other modded content as time goes

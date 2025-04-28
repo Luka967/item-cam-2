@@ -1,4 +1,18 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.8.3
+Date: 2025-04-28
+  Features:
+    - Focus tracker is now able to find the landing pad for a cargo pod descending to planet
+    - Added smoothing when focus changes cargo pod and platform hub/landing pad and vice-versa
+    - Focus tracker now respects forces of entities when it has to search
+  Optimizations:
+    - Focus tracker no longer queries for item count in chests
+  Bugfixes:
+    - Focus tracker will now always follow item when taken out of chest/rocket silo/platform hub/landing pad
+    - Fixed focus tracker taking oldest stack instead of newest when item drops on belt
+    - Fixed focus tracker searching wrong lane when following item taken out of north- and south-facing mining drills
+    - Fixed crash when stopping item follow when player in god controller is in remote view
+---------------------------------------------------------------------------------------------------
 Version: 0.8.2
 Date: 2025-04-28
   Changes:

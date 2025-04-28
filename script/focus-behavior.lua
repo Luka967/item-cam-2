@@ -6,7 +6,9 @@ local watchdog = require("focus-watchdog")
 local focus_behavior = {}
 
 --- @class FocusSmoothingState
---- @field speed number
+--- @field speed? number
+--- @field min_speed? number
+--- @field mul? number
 --- @field final_tick integer
 
 --- @class FocusInstance
@@ -32,7 +34,7 @@ function focus_behavior.acquire_target(controlling, watching)
 
     --- @type FocusInstance
     local ret = {
-        previous_controller = controlling.controller_type,
+        previous_controller = controlling.physical_controller_type,
         previous_surface_idx = controlling.physical_surface_index or controlling.surface_index,
         previous_position = controlling.physical_position or controlling.position,
         previous_character = controlling.character,
@@ -141,8 +143,8 @@ end
 
 --- @param focus FocusInstance
 local function update_smooth_position(focus)
-    local lerping = focus.smoothing
-    if not lerping or game.tick >= lerping.final_tick then
+    local smoothing = focus.smoothing
+    if not smoothing or game.tick >= smoothing.final_tick then
         focus.smoothing = nil
         focus.smooth_position.x = focus.position.x
         focus.smooth_position.y = focus.position.y
@@ -150,8 +152,12 @@ local function update_smooth_position(focus)
     end
 
     local angle = utility.vec_angle(focus.smooth_position, focus.position)
-    local d = math.sqrt(utility.distance(focus.smooth_position, focus.position))
-    d = math.min(focus.smoothing.speed, d)
+    local real_d = math.sqrt(utility.distance(focus.smooth_position, focus.position))
+    local d = real_d
+    d = d * (smoothing.mul or 1)
+    d = math.min(focus.smoothing.speed or d, d)
+    d = math.max(focus.smoothing.min_speed or 0, d)
+    d = math.min(d, real_d)
 
     focus.smooth_position.x = focus.smooth_position.x + angle.x * d
     focus.smooth_position.y = focus.smooth_position.y + angle.y * d

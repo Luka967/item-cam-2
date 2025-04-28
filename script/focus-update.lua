@@ -10,13 +10,15 @@ local utility = require("utility")
 local __restrictions_noop = {}
 
 --- @param surface LuaSurface
+--- @param force ForceID
 --- @param search_area BoundingBox
 --- @param ref_pos MapPosition
 --- @param restrictions WatchInserterCandidateRestrictions
-local function watch_inserter_candidate(surface, search_area, ref_pos, restrictions)
+local function watch_inserter_candidate(surface, force, search_area, ref_pos, restrictions)
     local best_guess = utility.minimum_of(surface.find_entities_filtered({
         area = search_area,
-        type = "inserter"
+        type = "inserter",
+        force = force
     }), function (candidate)
         local held_stack = candidate.held_stack
         if not held_stack.valid_for_read
@@ -30,13 +32,15 @@ local function watch_inserter_candidate(surface, search_area, ref_pos, restricti
         if restrictions.target ~= nil and candidate.drop_target ~= restrictions.target
             then return end
 
-        local d_ref_pos_to_hand = utility.distance(ref_pos, candidate.held_stack_position)
-        if
-            restrictions.swinging_towards
-            and utility.distance(ref_pos, candidate.position) < d_ref_pos_to_hand
-        then return end
+        if not restrictions.swinging_towards then
+            return utility.distance(ref_pos, candidate.held_stack_position)
+        end
 
-        return d_ref_pos_to_hand
+        local d_hand_to_pickup = utility.distance(candidate.held_stack_position, candidate.pickup_position)
+        if d_hand_to_pickup > utility.inserter_search_d_picking_up_feather
+            then return end
+
+        return d_hand_to_pickup
     end)
 
     if best_guess ~= nil then
@@ -48,15 +52,17 @@ end
 --- @field item? ItemIDAndQualityIDPair
 
 --- @param surface LuaSurface
+--- @param force ForceID
 --- @param search_area BoundingBox
 --- @param ref_pos MapPosition
 --- @param restrictions WatchRobotCandidateRestrictions
-local function watch_robot_candidate(surface, search_area, ref_pos, restrictions)
+local function watch_robot_candidate(surface, force, search_area, ref_pos, restrictions)
     restrictions = restrictions or __restrictions_noop
 
     local best_guess = utility.minimum_of(surface.find_entities_filtered({
         area = search_area,
-        type = utility.all_bot
+        type = utility.all_bot,
+        force = force
     }), function (candidate)
         -- It would have been nicer to check for a pickup order.
         -- But because they actually update only every 20 ticks, we'd need a giant surface area scanned every tick
@@ -92,7 +98,7 @@ local function watch_newest_item_on_belt_candidate(target_belt_entity, restricti
             or candidate.stack.quality ~= restrictions.item.quality
         ) then return end
 
-        return candidate.unique_id
+        return -candidate.unique_id -- Pick newest
     end)
 
     if best_guess and line_idx then
@@ -134,6 +140,7 @@ local function watch_next(entity, item)
         utility.debug("watchdog watch_next: item from container was already taken by inserter")
         return watch_inserter_candidate(
             entity.surface,
+            entity.force,
             utility.aabb_expand(entity.bounding_box, utility.inserter_search_d),
             entity.position,
             {item = item, source = entity}
@@ -153,7 +160,8 @@ local function watch_drop_target(entity, item)
 
     local dropped_item_entity = entity.surface.find_entities_filtered({
         position = entity.drop_position,
-        type = {"item-entity"}
+        type = {"item-entity"},
+        force = entity.force
     })
     if dropped_item_entity == nil
         then return end
@@ -168,11 +176,13 @@ local function watch_taken_out_of_building(entity, item, also_drop_target)
         (also_drop_target and watch_drop_target(entity, item))
         or watch_inserter_candidate(
             entity.surface,
+            entity.force,
             utility.aabb_expand(entity.bounding_box, utility.inserter_search_d),
             entity.position,
             {source = entity, item = item}
         ) or watch_robot_candidate(
             entity.surface,
+            entity.force,
             utility.aabb_expand(entity.bounding_box, utility.robot_search_d),
             entity.position,
             {item = item}
@@ -219,6 +229,7 @@ local function item_on_belt(focus, handle, pin)
         utility.debug("watchdog changing: can't find item on belt with my id")
         focus.watching = watch_inserter_candidate(
             handle.surface,
+            handle.force,
             utility.aabb_around(focus.position, utility.inserter_search_d),
             focus.position,
             {item = focus.watching.item}
@@ -257,25 +268,13 @@ end
 
 --- @param focus FocusInstance
 --- @param handle LuaEntity
---- @param pin PinItemInContainer
-local function item_in_container(focus, handle, pin)
-    --- @type ItemIDAndQualityIDPair
-    local item = focus.watching.item
-
-    local item_count = pin.inventory.get_item_count(item)
-    if item_count == 0 and pin.last_tick_count == 0 then
-        -- Where did it go?
-        utility.debug("watchdog lost: item wasn't even here last tick")
-        return false
-    elseif item_count >= pin.last_tick_count then
-        pin.last_tick_count = item_count
-        return true
+local function item_in_container(focus, handle)
+    -- Always query if item got taken.
+    -- inventory.get_item_count is expensive for huge space platform cargo
+    local first_taken_by = watch_taken_out_of_building(handle, focus.watching.item)
+    if first_taken_by ~= nil then
+        focus.watching = first_taken_by
     end
-
-    utility.debug("watchdog changing: item_count decreased")
-
-    -- Taken by bot or inserter
-    focus.watching = watch_taken_out_of_building(handle, item, true)
     return true
 end
 
@@ -345,32 +344,34 @@ local function item_coming_from_mining_drill(focus, handle, pin)
         then return true end
 
     local drop_target = handle.drop_target
-    if drop_target ~= nil then
-        if not utility.is_belt[drop_target.type] then
-            focus.watching = watch_next(drop_target)
-            return true
-        end
+    if drop_target == nil then
+        -- TODO: It drops on ground
+        utility.debug("watchdog lost: TODO: drill drops on ground, find the item")
+        return false
+    end
 
-        local drop_line_idx = utility.mining_drill_drop_belt_line_idx[handle.direction][drop_target.direction]
-
-        local best_guess, line_idx = utility.minimum_on_belt(drop_target, function (candidate, line_idx)
-            if line_idx ~= drop_line_idx or not utility.contains(pin.expected_products, candidate.stack.name)
-                then return end
-            return utility.distance(
-                handle.drop_position,
-                drop_target.get_line_item_position(line_idx, candidate.position)
-            )
-        end)
-
-        if best_guess and line_idx then
-            focus.watching = watchdog.create.item_on_belt(best_guess, line_idx, drop_target)
-        end
+    -- Belts have special handling because it can only drop in predetermined locations
+    -- TODO: watch_drop_target should be doing this
+    if not utility.is_belt[drop_target.type] then
+        focus.watching = watch_next(drop_target)
         return true
     end
 
-    -- TODO: It drops on ground
-    utility.debug("watchdog lost: TODO: drill drops on ground, find the item")
-    return false
+    local drop_line_idx = utility.mining_drill_drop_belt_line_idx[handle.direction][drop_target.direction]
+
+    local best_guess, line_idx = utility.minimum_on_belt(drop_target, function (candidate, line_idx)
+        if line_idx ~= drop_line_idx or not utility.contains(pin.expected_products, candidate.stack.name)
+            then return end
+        return utility.distance(
+            handle.drop_position,
+            drop_target.get_line_item_position(line_idx, candidate.position)
+        )
+    end)
+
+    if best_guess and line_idx then
+        focus.watching = watchdog.create.item_on_belt(best_guess, line_idx, drop_target)
+    end
+    return true
 end
 
 --- @param focus FocusInstance
@@ -402,6 +403,19 @@ local function item_in_rocket(focus, handle)
     return true
 end
 
+--- @param cargo_bay LuaEntity
+local function find_matching_landing_pad(cargo_bay)
+    local landing_pads = cargo_bay.surface.find_entities_filtered({
+        type = {"cargo-landing-pad"},
+        force = cargo_bay.force
+    })
+
+    for _, candidate in ipairs(landing_pads) do
+        if utility.contains(candidate.get_cargo_bays(), cargo_bay) then
+            return candidate
+        end
+    end
+end
 --- @param destination CargoDestination
 local function select_pod_drop_target(destination)
     if destination.type ~= defines.cargo_destination.station then
@@ -420,11 +434,12 @@ local function select_pod_drop_target(destination)
 
     if destination.space_platform ~= nil
         then return destination.space_platform.hub end
-    if destination.surface ~= nil then
-        -- TODO: It goes into landing pad, but API has no association backwards to landing pad
-        utility.debug("watchdog select_pod_drop_target: TODO: going to cargo-bay but can't associate landing pad")
+    if destination.surface == nil then
+        utility.debug("watchdog select_pod_drop_target: surface is nil") -- What?
         return nil
     end
+    utility.debug("watchdog select_pod_drop_target: find_matching_landing_pad")
+    return find_matching_landing_pad(target)
 end
 --- @param focus FocusInstance
 --- @param handle LuaEntity
@@ -460,7 +475,8 @@ local function watch_outgoing_cargo_pod(entity, item)
 
     local nearby_pod = entity.surface.find_entities_filtered({
         area = entity.bounding_box,
-        type = {"cargo-pod"}
+        type = {"cargo-pod"},
+        force = entity.force
     })
     for _, candidate in ipairs(nearby_pod) do
         local inventory = candidate.get_inventory(defines.inventory.cargo_unit)
@@ -476,8 +492,7 @@ end
 
 --- @param focus FocusInstance
 --- @param handle LuaEntity
---- @param pin PinItemInContainerWithCargoHatches
-local function item_in_container_with_cargo_hatches(focus, handle, pin)
+local function item_in_container_with_cargo_hatches(focus, handle)
     local item = focus.watching.item
 
     local first_taken_by =
@@ -494,7 +509,7 @@ local function item_in_container_with_cargo_hatches(focus, handle, pin)
     end
 
     -- It's also a container. Inherit container update behavior
-    return item_in_container(focus, handle, pin)
+    return item_in_container(focus, handle)
 end
 
 local map = {
@@ -515,16 +530,20 @@ local map_after_destroy = {
 }
 
 --- @class SmoothingDefinition
---- @field speed number
+--- @field speed? number
+--- @field min_speed? number
+--- @field mul? number
 --- @field ticks integer
 
 --- @type table<string, SmoothingDefinition>
 local map_smooth_speed_in = {
-    ["item-in-inserter-hand"] = {speed = 0.25, ticks = 60}
+    ["item-in-inserter-hand"] = {speed = 0.25, ticks = 60},
+    ["item-in-container-with-cargo-hatches"] = {min_speed = 0.1, mul = 0.1, ticks = 120}
 }
 --- @type table<string, SmoothingDefinition>
 local map_smooth_speed_out = {
-    ["item-in-inserter-hand"] = {speed = 0.25, ticks = 60}
+    ["item-in-inserter-hand"] = {speed = 0.25, ticks = 60},
+    ["item-in-container-with-cargo-hatches"] = {min_speed = 0.1, mul = 0.1, ticks = 120}
 }
 
 --- @param focus FocusInstance
@@ -536,11 +555,15 @@ local function extend_smooth(focus, kind, type)
         then return end
 
     local previous_final_tick = focus.smoothing and focus.smoothing.final_tick or game.tick
-    focus.smoothing = focus.smoothing or {}
-    focus.smoothing.speed = new_smoothing.speed
-    focus.smoothing.final_tick = game.tick + new_smoothing.ticks
+    focus.smoothing = {
+        final_tick = game.tick + new_smoothing.ticks,
+        speed = new_smoothing.speed,
+        min_speed = new_smoothing.min_speed,
+        mul = new_smoothing.mul
+    }
+
     local extended_by = focus.smoothing.final_tick - previous_final_tick
-    utility.debug("smoothing extended: speed "..focus.smoothing.speed.." +"..extended_by.." ticks")
+    utility.debug("smoothing extended "..extended_by.." ticks: "..serpent.line(focus.smoothing))
 end
 
 --- @param focus FocusInstance

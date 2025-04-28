@@ -150,7 +150,8 @@ function utility.minimum_of(arr, d_fn)
             local_d = d
         end
     end
-    utility.debug("minimum_of candidates "..cnt.."/"..#arr)
+    -- Spammy
+    -- utility.debug("minimum_of candidates "..cnt.."/"..#arr)
 
     return local_minimum, local_d
 end
@@ -269,6 +270,7 @@ function utility.mining_products(arg)
 end
 
 utility.inserter_search_d = 2
+utility.inserter_search_d_picking_up_feather = 0.08
 utility.robot_search_d = 0.5
 -- Mining drill direction -> belt piece direction -> target line_idx
 utility.mining_drill_drop_belt_line_idx = {
@@ -285,14 +287,14 @@ utility.mining_drill_drop_belt_line_idx = {
         [defines.direction.east] = 2,
     },
     [defines.direction.north] = {
-        [defines.direction.east] = 1,
-        [defines.direction.west] = 2,
+        [defines.direction.east] = 2,
+        [defines.direction.west] = 1,
         [defines.direction.north] = 2,
         [defines.direction.south] = 2,
     },
     [defines.direction.south] = {
-        [defines.direction.east] = 2,
-        [defines.direction.west] = 1,
+        [defines.direction.east] = 1,
+        [defines.direction.west] = 2,
         [defines.direction.north] = 2,
         [defines.direction.south] = 2
     },

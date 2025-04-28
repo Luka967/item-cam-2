@@ -1,7 +1,7 @@
 # Item Cam 2
 Follow an item around your base like in the Factorio trailer. Spiritual successor to [DaveMcW's Item Cam](https://mods.factorio.com/mod/itemcam), rewritten for 2.0 and Space Age content support.
 
-The default hotkey `Alt + F`, also comes with shortcut "Follow item" in hotbar. When pressed, you select what you want to start follow. If it's supported, almost all GUI elements get hidden and your journey begins.
+The default hotkey is `Alt + C`, also comes with shortcut "Follow item" in hotbar. When pressed, you select what you want to start follow. If it's supported, almost all GUI elements get hidden and your journey begins.
 
 Pressing same hotkey, or `/stop-item-cam` in chat if you're truly stuck, will stop following your item.
 
@@ -24,13 +24,11 @@ If mod errors out while you're following something or it doesn't continue as you
 - Space Age content: rockets with cargo, space platform hubs and their pods
 
 ## Limitations
+- Follow selection tool is stupid right now. Try to always select only one thing
 - You can't select specific item to follow when it comes out of a recipe with multiple results. Not yet
 - You can't watch the cargo pod processions. API limitation. Sorry!
-- You can't follow cargo pod if it descends down to planet. Not yet
 - Tracker doesn't know about when item spoils in container. Not yet
 - Inserters and mining drills shuffling items on ground can't be tracked. Not yet
-- Follow selection tool is stupid right now. Try to always select only one thing
-- Platform hubs/landing pads and chests with huge inventories might incur a UPS hit
 
 ## Things that are planned to be trackable:
 - Fluids in general - fluid wagons, pumps

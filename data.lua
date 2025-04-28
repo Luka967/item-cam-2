@@ -31,6 +31,6 @@ data:extend({{
 data:extend({{
     name = "item-cam",
     type = "custom-input",
-    key_sequence = "ALT + F",
+    key_sequence = "ALT + C",
     action = "lua"
 }})

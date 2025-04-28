@@ -11,10 +11,6 @@ local utility = require("utility")
 
 local create = {}
 
---- @class PinItemInContainer
---- @field inventory LuaInventory
---- @field last_tick_count integer
-
 --- @param entity LuaEntity
 --- @param inventory_type defines.inventory
 --- @param item ItemIDAndQualityIDPair
@@ -25,11 +21,7 @@ function create.item_in_container(entity, inventory_type, item)
     return {
         type = "item-in-container",
         handle = entity,
-        item = item,
-        pin = {
-            inventory = inventory,
-            last_tick_count = inventory.get_item_count(item)
-        }
+        item = item
     }
 end
 
@@ -184,8 +176,6 @@ function create.item_in_cargo_pod(entity, item)
     }
 end
 
---- @class PinItemInContainerWithCargoHatches: PinItemInContainer
-
 --- @param entity LuaEntity
 --- @param item ItemIDAndQualityIDPair
 --- @return FocusWatchdog
@@ -195,11 +185,7 @@ function create.item_in_container_with_cargo_hatches(entity, item)
     return {
         type = "item-in-container-with-cargo-hatches",
         handle = entity,
-        item = item,
-        pin = {
-            inventory = inventory,
-            last_tick_count = inventory.get_item_count(item)
-        }
+        item = item
     }
 end
 

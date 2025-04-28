@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.8.4
+Date: 2025-04-28
+  Changes:
+    - Default hotkey changed to Alt + C because it conflicted with "Toggle personal roboport" default
+  Other:
+    - Marked mod to not require Space Age, because it doesn't. Stupid copy paste
+---------------------------------------------------------------------------------------------------
 Version: 0.8.3
 Date: 2025-04-28
   Features:

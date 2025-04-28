@@ -28,6 +28,7 @@ local function start_item_cam(event)
     set_focus(event.player_index, new_focus)
 end
 
+--- @param player_idx integer
 local function stop_item_cam(player_idx)
     local focus = get_focus(player_idx)
     if focus == nil
@@ -73,6 +74,7 @@ end
 
 script.on_init(function ()
     storage.focuses = storage.focuses or {}
+    focuses = storage.focuses
 end)
 
 script.on_load(function ()
@@ -120,8 +122,7 @@ local function update_focus(player_idx)
     local tell_str = "lost focus, last known was "..last_type.." at "..gps_tag
     utility.debug(tell_str)
     focus.controlling.print(tell_str)
-    focus_behavior.stop_following(focus)
-    set_focus(player_idx, nil)
+    stop_item_cam(player_idx)
 end
 
 script.on_event(defines.events.on_object_destroyed, function (event)

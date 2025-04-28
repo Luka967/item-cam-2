@@ -34,7 +34,7 @@ function focus_behavior.acquire_target(controlling, watching)
     local ret = {
         previous_controller = controlling.controller_type,
         previous_surface_idx = controlling.surface_index,
-        previous_position = controlling.position,
+        previous_position = controlling.physical_position or controlling.position,
         previous_character = controlling.character,
         controlling = controlling,
         watching = watching,
@@ -93,11 +93,16 @@ function focus_behavior.stop_following(focus)
 
     if focus.previous_controller == defines.controllers.editor then
         player.toggle_map_editor()
-    else
+    elseif
+        focus.previous_controller == defines.controllers.character
+        or focus.previous_controller == defines.controllers.remote
+    then
         player.set_controller({
-            type = focus.previous_controller,
+            type = defines.controllers.character,
             character = focus.previous_character
         })
+    else
+        player.set_controller({type = focus.previous_controller})
     end
     toggle_gui_elements(player, true)
 

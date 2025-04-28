@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.8.2
+Date: 2025-04-28
+  Changes:
+    - Smoothing upon inserter interaction now lasts 4x longer
+  Bugfixes:
+    - Fix stop follow bad order of operations crashing in Remote view
+---------------------------------------------------------------------------------------------------
 Version: 0.8.1
 Date: 2025-04-28
   Bugfixes:

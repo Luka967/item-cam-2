@@ -520,11 +520,11 @@ local map_after_destroy = {
 
 --- @type table<string, SmoothingDefinition>
 local map_smooth_speed_in = {
-    ["item-in-inserter-hand"] = {speed = 0.25, ticks = 15}
+    ["item-in-inserter-hand"] = {speed = 0.25, ticks = 60}
 }
 --- @type table<string, SmoothingDefinition>
 local map_smooth_speed_out = {
-    ["item-in-inserter-hand"] = {speed = 0.25, ticks = 15}
+    ["item-in-inserter-hand"] = {speed = 0.25, ticks = 60}
 }
 
 --- @param focus FocusInstance
@@ -535,18 +535,12 @@ local function extend_smooth(focus, kind, type)
     if not new_smoothing
         then return end
 
-    if focus.smoothing then
-        focus.smoothing.speed = new_smoothing.speed
-        focus.smoothing.final_tick = game.tick + new_smoothing.ticks
-        utility.debug("smoothing modified to "..focus.smoothing.final_tick.." until "..focus.smoothing.speed)
-        return
-    end
-
-    focus.smoothing = {
-        speed = new_smoothing.speed,
-        final_tick = game.tick + new_smoothing.ticks
-    }
-    utility.debug("smoothing started to "..focus.smoothing.final_tick.." until "..focus.smoothing.speed)
+    local previous_final_tick = focus.smoothing and focus.smoothing.final_tick or game.tick
+    focus.smoothing = focus.smoothing or {}
+    focus.smoothing.speed = new_smoothing.speed
+    focus.smoothing.final_tick = game.tick + new_smoothing.ticks
+    local extended_by = focus.smoothing.final_tick - previous_final_tick
+    utility.debug("smoothing extended: speed "..focus.smoothing.speed.." +"..extended_by.." ticks")
 end
 
 --- @param focus FocusInstance

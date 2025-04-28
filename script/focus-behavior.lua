@@ -91,6 +91,14 @@ function focus_behavior.stop_following(focus)
     focus.valid = false
     player.set_shortcut_toggled("item-cam", false)
 
+    -- Teleport player to proper surface before reassigning controller
+    if game.get_surface(focus.previous_surface_idx) == nil then
+        player.print("Previous surface is gone. I don't know where to teleport you")
+        player.teleport({0, 0}, "nauvis")
+    else
+        player.teleport(focus.previous_position, focus.previous_surface_idx)
+    end
+
     if focus.previous_controller == defines.controllers.editor then
         player.toggle_map_editor()
     elseif
@@ -105,13 +113,6 @@ function focus_behavior.stop_following(focus)
         player.set_controller({type = focus.previous_controller})
     end
     toggle_gui_elements(player, true)
-
-    if game.get_surface(focus.previous_surface_idx) == nil then
-        player.print("Previous surface is gone. I don't know where to teleport you")
-        player.teleport({0, 0}, "nauvis")
-    else
-        player.teleport(focus.previous_position, focus.previous_surface_idx)
-    end
 end
 
 local allowed_controllers = {

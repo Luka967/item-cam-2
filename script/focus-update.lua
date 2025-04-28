@@ -514,29 +514,82 @@ local map_after_destroy = {
     ["item-in-cargo-pod"] = item_in_cargo_pod_after_destroy
 }
 
+--- @class SmoothingDefinition
+--- @field speed number
+--- @field ticks integer
+
+--- @type table<string, SmoothingDefinition>
+local map_smooth_speed_in = {
+    ["item-in-inserter-hand"] = {speed = 0.25, ticks = 15}
+}
+--- @type table<string, SmoothingDefinition>
+local map_smooth_speed_out = {
+    ["item-in-inserter-hand"] = {speed = 0.25, ticks = 15}
+}
+
+--- @param focus FocusInstance
+--- @param kind table<string, SmoothingDefinition>
+--- @param type string
+local function extend_smooth(focus, kind, type)
+    local new_smoothing = kind[type]
+    if not new_smoothing
+        then return end
+
+    if focus.smoothing then
+        focus.smoothing.speed = new_smoothing.speed
+        focus.smoothing.final_tick = game.tick + new_smoothing.ticks
+        utility.debug("smoothing modified to "..focus.smoothing.final_tick.." until "..focus.smoothing.speed)
+        return
+    end
+
+    focus.smoothing = {
+        speed = new_smoothing.speed,
+        final_tick = game.tick + new_smoothing.ticks
+    }
+    utility.debug("smoothing started to "..focus.smoothing.final_tick.." until "..focus.smoothing.speed)
+end
+
 --- @param focus FocusInstance
 return function (focus)
-    if not focus.watching.handle.valid then
-        local fnd = map_after_destroy[focus.watching.type]
+    local watching = focus.watching
+    local last_watching_type = watching.type
+
+    if not watching.handle.valid then
+        local fnd = map_after_destroy[watching.type]
         if
             not fnd
-            or not fnd(focus, focus.watching.handle, focus.watching.pin)
+            or not fnd(focus, watching.handle, watching.pin)
             or focus.watching == nil -- After calling fnd
         then
             focus.valid = false
             return false
         end
+
+        watching = focus.watching
+        if watching.type ~= last_watching_type then
+            utility.debug("invalid handle change focus from "..last_watching_type.." to "..watching.type)
+            extend_smooth(focus, map_smooth_speed_out, last_watching_type)
+            extend_smooth(focus, map_smooth_speed_in, watching.type)
+            last_watching_type = watching.type
+        end
     end
 
-    local fn = map[focus.watching.type]
+    local fn = map[watching.type]
 
     if
         not fn
-        or not fn(focus, focus.watching.handle, focus.watching.pin)
+        or not fn(focus, watching.handle, watching.pin)
         or focus.watching == nil -- After calling fn
     then
         focus.valid = false
         return false
+    end
+
+    watching = focus.watching
+    if watching.type ~= last_watching_type then
+        utility.debug("change focus from "..last_watching_type.." to "..watching.type)
+        extend_smooth(focus, map_smooth_speed_out, last_watching_type)
+        extend_smooth(focus, map_smooth_speed_in, watching.type)
     end
 
     return true

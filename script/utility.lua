@@ -1,7 +1,7 @@
 local utility = {}
 
 function utility.debug(...)
-    if not script.active_mods["debugadapter"] or not settings.global["debug-tracker"].value
+    if not settings.global["debug-tracker"].value
         then return end
     print(game.tick, ...)
 end

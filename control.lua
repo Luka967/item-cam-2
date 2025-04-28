@@ -110,21 +110,18 @@ local function update_focus(player_idx)
     end
 
     local last_type = focus.watching.type
-    if not focus_behavior.update(focus) then
-        local gps_tag = "[gps="..focus.position.x..","..focus.position.y..","..focus.surface.name.."]"
-        local tell_str = "lost focus, last known was "..last_type.." at "..gps_tag
-        utility.debug(tell_str)
-        focus.controlling.print(tell_str)
-        focus_behavior.stop_following(focus)
-        set_focus(player_idx, nil)
-        return
-    elseif focus.watching.type ~= last_type then
-        utility.debug("change focus from "..last_type.." to "..focus.watching.type)
+    if focus_behavior.update(focus) then
+        focus_behavior.update_location(focus)
+        focus.controlling.teleport(focus.smooth_position, focus.surface)
         return
     end
 
-    focus_behavior.update_location(focus)
-    focus.controlling.teleport(focus.position, focus.surface)
+    local gps_tag = "[gps="..focus.position.x..","..focus.position.y..","..focus.surface.name.."]"
+    local tell_str = "lost focus, last known was "..last_type.." at "..gps_tag
+    utility.debug(tell_str)
+    focus.controlling.print(tell_str)
+    focus_behavior.stop_following(focus)
+    set_focus(player_idx, nil)
 end
 
 script.on_event(defines.events.on_object_destroyed, function (event)

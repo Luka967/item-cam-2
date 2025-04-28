@@ -1,8 +1,13 @@
+local utility = require("utility")
 local focus_select = require("focus-select")
 local focus_update = require("focus-update")
 local watchdog = require("focus-watchdog")
 
 local focus_behavior = {}
+
+--- @class FocusSmoothingState
+--- @field speed number
+--- @field final_tick integer
 
 --- @class FocusInstance
 --- @field previous_controller defines.controllers
@@ -10,8 +15,10 @@ local focus_behavior = {}
 --- @field previous_position MapPosition
 --- @field previous_character? LuaEntity
 --- @field controlling LuaPlayer
+--- @field smoothing? FocusSmoothingState If set, smooth_position chases position at a fixed speed instead of directly copying it
 --- @field watching FocusWatchdog
 --- @field position MapPosition
+--- @field smooth_position MapPosition
 --- @field surface LuaSurface
 --- @field valid boolean
 
@@ -32,6 +39,7 @@ function focus_behavior.acquire_target(controlling, watching)
         controlling = controlling,
         watching = watching,
         position = watchdog.get_position[watching.type](watching),
+        smooth_position = watchdog.get_position[watching.type](watching), -- Need separate object instance!
         surface = watchdog.get_surface[watching.type](watching),
         valid = true
     }
@@ -126,12 +134,31 @@ function focus_behavior.update(focus)
 end
 
 --- @param focus FocusInstance
+local function update_smooth_position(focus)
+    local lerping = focus.smoothing
+    if not lerping or game.tick >= lerping.final_tick then
+        focus.smoothing = nil
+        focus.smooth_position.x = focus.position.x
+        focus.smooth_position.y = focus.position.y
+        return
+    end
+
+    local angle = utility.vec_angle(focus.smooth_position, focus.position)
+    local d = math.sqrt(utility.distance(focus.smooth_position, focus.position))
+    d = math.min(focus.smoothing.speed, d)
+
+    focus.smooth_position.x = focus.smooth_position.x + angle.x * d
+    focus.smooth_position.y = focus.smooth_position.y + angle.y * d
+end
+
+--- @param focus FocusInstance
 function focus_behavior.update_location(focus)
     local watching = focus.watching
     if not watching.handle.valid
         then return false end
 
     focus.position = watchdog.get_position[watching.type](watching)
+    update_smooth_position(focus)
     if watching.type_changes_surface then
         focus.surface = watchdog.get_surface[watching.type](watching)
     end

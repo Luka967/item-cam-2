@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.8.1
+Date: 2025-04-28
+  Bugfixes:
+    - Temporarily fix crash with Tile Upgrade Planner (https://mods.factorio.com/mod/item-cam-2/discussion/680f58ea7d79b0b42bfddbb8)
+    - Fix following item from Remote view, then leaving, possibly putting player character on wrong surface
+---------------------------------------------------------------------------------------------------
 Version: 0.8.0
 Date: 2025-04-28
   Features:

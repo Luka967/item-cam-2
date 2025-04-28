@@ -27,6 +27,7 @@ If mod errors out while you're following something or it doesn't continue as you
 - You can't select specific item to follow when it comes out of a recipe with multiple results. Not yet
 - You can't watch the cargo pod processions. API limitation. Sorry!
 - You can't follow cargo pod if it descends down to planet. Not yet
+- Tracker doesn't know about when item spoils in container. Not yet
 - Inserters and mining drills shuffling items on ground can't be tracked. Not yet
 - Follow selection tool is stupid right now. Try to always select only one thing
 - Platform hubs/landing pads and chests with huge inventories might incur a UPS hit

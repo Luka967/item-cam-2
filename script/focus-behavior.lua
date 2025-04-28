@@ -33,7 +33,7 @@ function focus_behavior.acquire_target(controlling, watching)
     --- @type FocusInstance
     local ret = {
         previous_controller = controlling.controller_type,
-        previous_surface_idx = controlling.surface_index,
+        previous_surface_idx = controlling.physical_surface_index or controlling.surface_index,
         previous_position = controlling.physical_position or controlling.position,
         previous_character = controlling.character,
         controlling = controlling,

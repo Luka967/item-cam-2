@@ -1,22 +1,26 @@
 local watchdog = require("focus-watchdog")
-local utility  = require("utility")
+local utility = require("utility")
 
 --- @param selected LuaEntity
 local function inserter_with_item_in_hand(selected)
     if not selected.held_stack.valid_for_read
         then return end
-    return watchdog.create.item_in_inserter_hand(selected)
+    return {watchdog.create.item_in_inserter_hand(selected)}
 end
 
 --- @param selected LuaEntity
 local function belt_with_items_on_it(selected)
+    local candidates = {}
+
     local line_count = selected.get_max_transport_line_index()
     for line_idx = 1, line_count do
-        local line = selected.get_transport_line(line_idx)
-        if #line > 0 then
-            return watchdog.create.item_on_belt(line.get_detailed_contents()[1], line_idx, selected)
+        local line_contents = selected.get_transport_line(line_idx).get_detailed_contents()
+        for _, candidate in ipairs(line_contents) do
+            table.insert(candidates, watchdog.create.item_on_belt(candidate, line_idx, selected))
         end
     end
+
+    return candidates
 end
 
 --- @param selected LuaEntity
@@ -26,6 +30,7 @@ local function container_with_contents(selected)
         then return end
 
     local inventory = selected.get_inventory(inventory_type)
+    assert(inventory ~= nil, "select container_with_contents on container doesn't have targeted inventory")
     local item_stack = utility.first_readable_item_stack(inventory)
     if item_stack == nil
         then return end
@@ -35,20 +40,16 @@ local function container_with_contents(selected)
         quality = item_stack.quality
     }
 
-    -- TODO: Coalesce the copypaste
-    if selected.type == "rocket-silo"
-        then return watchdog.create.item_in_rocket_silo(selected, item) end
-    if #selected.cargo_hatches > 0
-        then return watchdog.create.item_in_container_with_cargo_hatches(selected, item) end
-    return watchdog.create.item_in_container(selected, inventory_type, item)
+    return {watchdog.create.item_in_container(selected, item)}
 end
 
 --- @param selected LuaEntity
 local function robot_holding_item(selected)
     local inventory = selected.get_inventory(defines.inventory.robot_cargo)
+    assert(inventory ~= nil, "select robot_holding_item on robot doesn't have targeted inventory")
     if not inventory[1].valid_for_read
         then return end
-    return watchdog.create.item_held_by_robot(selected)
+    return {watchdog.create.item_held_by_robot(selected)}
 end
 
 --- @param selected LuaEntity
@@ -56,7 +57,7 @@ local function crafting_machine_with_recipe(selected)
     if selected.get_recipe() == nil
         then return end
 
-    return watchdog.create.item_in_crafting_machine(selected)
+    return {watchdog.create.item_in_crafting_machine(selected)}
 end
 
 --- @param selected LuaEntity
@@ -66,7 +67,7 @@ local function mining_drill_with_resource(selected)
     if not utility.mining_products{source = selected.mining_target, items = true}
         then return end
 
-    return watchdog.create.item_coming_from_mining_drill(selected)
+    return {watchdog.create.item_coming_from_mining_drill(selected)}
 end
 
 local map = {
@@ -86,17 +87,23 @@ for prototype in pairs(utility.is_robot) do
     map[prototype] = robot_holding_item
 end
 
---- @param selected LuaEntity
-return function (selected)
-    local fn = map[selected.type]
-    if fn == nil
+--- @param all_selected LuaEntity[]
+--- @param center MapPosition
+return function (all_selected, center)
+    local all_candidates = utility.mapped_flattened(all_selected, function (entry)
+        local fn = map[entry.type]
+        if fn ~= nil then
+            return fn(entry)
+        end
+    end)
+    local closest_candidate = utility.minimum_of(all_candidates, function (entry)
+        return utility.distance(watchdog.get_position[entry.type](entry), center)
+    end)
+
+    if closest_candidate == nil
         then return end
-    utility.debug("i have seen "..selected.type)
 
-    local watching, position, surface_idx = fn(selected)
-    if watching ~= nil then
-        utility.debug("i have acquired "..watching.type)
-    end
+    utility.debug("focus acquired "..closest_candidate.type.." out of "..#all_candidates.." candidates")
 
-    return watching, position, surface_idx
+    return closest_candidate
 end

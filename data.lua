@@ -1,5 +1,7 @@
+local const = require("script.const")
+
 data:extend({{
-    name = "item-cam",
+    name = const.name_selection_item,
     localised_description = "shortcut.item-cam",
     type = "selection-tool",
     icon = "__item-cam-2__/graphics/icons/item-cam.png",
@@ -19,7 +21,7 @@ data:extend({{
 }})
 
 data:extend({{
-    name = "item-cam",
+    name = const.name_shortcut,
     type = "shortcut",
     localised_description = "shortcut.item-cam",
     icon = "__item-cam-2__/graphics/icons/item-cam.png",
@@ -29,7 +31,7 @@ data:extend({{
 }})
 
 data:extend({{
-    name = "item-cam",
+    name = const.name_keybind,
     type = "custom-input",
     key_sequence = "ALT + C",
     action = "lua"

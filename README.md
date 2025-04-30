@@ -24,11 +24,11 @@ If mod errors out while you're following something or it doesn't continue as you
 - Space Age content: rockets with cargo, space platform hubs and their pods
 
 ## Limitations
-- Follow selection tool is stupid right now. Try to always select only one thing
-- You can't select specific item to follow when it comes out of a recipe with multiple results. Not yet
 - You can't watch the cargo pod processions. API limitation. Sorry!
-- Tracker doesn't know about when item spoils in container. Not yet
+- You can't select specific item to follow when it comes out of a recipe with multiple results. Not yet
+- Focus tracker doesn't know about when item spoils in container. Not yet
 - Inserters and mining drills shuffling items on ground can't be tracked. Not yet
+- Watching item in space platform hub / cargo landing pad might incur UPS drops because of API limitations and an inefficient polling system
 
 ## Things that are planned to be trackable:
 - Fluids in general - fluid wagons, pumps

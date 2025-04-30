@@ -6,17 +6,17 @@ local utility = require("utility")
 --- @field handle LuaEntity
 --- @field pin any
 --- @field item? ItemIDAndQualityIDPair
---- @field position MapPosition
---- @field surface LuaSurface
 
 local create = {}
 
 --- @param entity LuaEntity
---- @param inventory_type defines.inventory
 --- @param item ItemIDAndQualityIDPair
 --- @return FocusWatchdog
-function create.item_in_container(entity, inventory_type, item)
-    local inventory = entity.get_inventory(inventory_type)
+function create.item_in_container(entity, item)
+    if entity.type == "rocket-silo"
+        then return create.item_in_rocket_silo(entity, item) end
+    if #entity.cargo_hatches > 0
+        then return create.item_in_container_with_cargo_hatches(entity, item) end
 
     return {
         type = "item-in-container",
@@ -53,7 +53,7 @@ end
 --- @param entity LuaEntity
 --- @return FocusWatchdog
 function create.item_in_inserter_hand(entity)
-    assert(entity.held_stack.valid_for_read, "Tried creating watchdog item-in-inserter-hand for inserter that has nothing in hand")
+    assert(entity.held_stack.valid_for_read, "watchdog create.item_in_inserter_hand for inserter that has nothing in hand")
 
     return {
         type = "item-in-inserter-hand",
@@ -67,6 +67,7 @@ end
 
 --- @class PinItemInCraftingMachine
 --- @field initial_products_finished integer
+--- @field announced_change? boolean
 
 --- @param entity LuaEntity
 --- @return FocusWatchdog
@@ -88,7 +89,7 @@ end
 --- @return FocusWatchdog
 function create.item_held_by_robot(entity)
     local first_item = entity.get_inventory(defines.inventory.robot_cargo)[1]
-    assert(first_item.valid_for_read, "Tried creating watchdog item-held-by-robot for robot that has nothing in robot_cargo")
+    assert(first_item.valid_for_read, "watchdog create.item_held_by_robot for robot that has nothing in robot_cargo")
 
     local first_order = entity.robot_order_queue[1]
     return {
@@ -112,7 +113,7 @@ end
 --- @param entity LuaEntity
 --- @return FocusWatchdog
 function create.item_coming_from_mining_drill(entity)
-    assert(entity.mining_target ~= nil, "Tried creating watchdog item-coming-from-mining-drill for drill that has no mining_target")
+    assert(entity.mining_target ~= nil, "watchdog create.item_coming_from_mining_drill for drill that has no mining_target")
 
     local mining_speed =
         entity.mining_target.prototype.mineable_properties.mining_time
@@ -132,9 +133,6 @@ function create.item_coming_from_mining_drill(entity)
     }
 end
 
---- @class PinItemInRocketSilo
---- @field inventory LuaInventory
-
 --- @param entity LuaEntity
 --- @param item ItemIDAndQualityIDPair
 --- @return FocusWatchdog
@@ -142,10 +140,7 @@ function create.item_in_rocket_silo(entity, item)
     return {
         type = "item-in-rocket-silo",
         handle = entity,
-        item = item,
-        pin = {
-            inventory = entity.get_inventory(defines.inventory.rocket_silo_rocket)
-        }
+        item = item
     }
 end
 
@@ -180,8 +175,6 @@ end
 --- @param item ItemIDAndQualityIDPair
 --- @return FocusWatchdog
 function create.item_in_container_with_cargo_hatches(entity, item)
-    local inventory = entity.get_inventory(defines.inventory.hub_main)
-
     return {
         type = "item-in-container-with-cargo-hatches",
         handle = entity,
@@ -193,13 +186,17 @@ end
 local function just_get_handle_pos(watchdog)
     return watchdog.handle.position
 end
+--- Selection box hooks to player's selection logic on game engine side.
+--- Here we use it for things whose logical positions don't match where they're rendered,
+--- i.e. bots and rolling stock on elevated rail
+--- Hats off to boskid for this workaround
 --- @param watchdog FocusWatchdog
 local function just_get_handle_selection_box(watchdog)
     return utility.aabb_center(watchdog.handle.selection_box)
 end
 --- @type table<string, fun(watchdog: FocusWatchdog): MapPosition>
 local get_position = {
-    ["item-in-container"] = just_get_handle_pos,
+    ["item-in-container"] = just_get_handle_selection_box, -- Includes wagons, so just make it a catch-all
     ["item-on-belt"] = function (watchdog)
         return watchdog.handle.get_line_item_position(watchdog.pin.line_idx, watchdog.pin.it.position)
     end,
@@ -207,8 +204,6 @@ local get_position = {
         return watchdog.handle.held_stack_position
     end,
     ["item-in-crafting-machine"] = just_get_handle_pos,
-    -- Position here is not always updated because of game engine optimizations.
-    -- Hats off to boskid for telling me I can use selection_box which hooks to the proper, rendered position instead
     ["item-held-by-robot"] = just_get_handle_selection_box,
     ["item-coming-from-mining-drill"] = just_get_handle_pos,
     ["item-in-rocket-silo"] = just_get_handle_pos,

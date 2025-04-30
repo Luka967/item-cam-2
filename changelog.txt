@@ -1,4 +1,16 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.8.5
+Date: 2025-04-30
+  Features:
+    - Selection tool now chooses to follow closest thing it can start tracking
+  Optimizations:
+    - Implemented workaround to avoid whole surface scan when transferring from cargo pod to surface landing pad
+    - Focus tracker no longer queries for item count in rocket silo
+  Bugfixes:
+    - Fixed smoothed camera snapping in a few edge cases
+    - Fixed focus tracker not considering swing state of inserters taking out of container/crafting machine
+    - Fixed focus tracker not considering elevation of rolling stock
+---------------------------------------------------------------------------------------------------
 Version: 0.8.4
 Date: 2025-04-28
   Changes:

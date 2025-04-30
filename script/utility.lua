@@ -49,6 +49,7 @@ function utility.vec_angle(src, dst)
 end
 
 --- @param aabb BoundingBox
+--- @return Vector
 function utility.aabb_center(aabb)
     return {
         x = (aabb.right_bottom.x + aabb.left_top.x) / 2,
@@ -96,12 +97,17 @@ end
 
 --- @generic T, U
 --- @param arr T[]
---- @param m_fn fun(entry: T): U
+--- @param m_fn fun(entry: T): U[]?
 --- @return U[]
-function utility.mapped(arr, m_fn)
+function utility.mapped_flattened(arr, m_fn)
     local ret = {}
     for _, entry in ipairs(arr) do
-        table.insert(ret, m_fn(entry))
+        local ret_entry = m_fn(entry)
+        if ret_entry ~= nil then
+            for _, x in ipairs(ret_entry) do
+                table.insert(ret, x)
+            end
+        end
     end
     return ret
 end

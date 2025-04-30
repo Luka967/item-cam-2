@@ -1,3 +1,4 @@
+local const = require("const")
 local utility = require("utility")
 local focus_select = require("focus-select")
 local focus_update = require("focus-update")
@@ -25,13 +26,8 @@ local focus_behavior = {}
 --- @field valid boolean
 
 --- @param controlling LuaPlayer
-function focus_behavior.acquire_target(controlling, watching)
-    if watching == nil
-        then return end
-    watching = focus_select(watching)
-    if watching == nil
-        then return end
-
+--- @param initial_watchdog FocusWatchdog
+function focus_behavior.acquire_target(controlling, initial_watchdog)
     --- @type FocusInstance
     local ret = {
         previous_controller = controlling.physical_controller_type,
@@ -39,10 +35,10 @@ function focus_behavior.acquire_target(controlling, watching)
         previous_position = controlling.physical_position or controlling.position,
         previous_character = controlling.character,
         controlling = controlling,
-        watching = watching,
-        position = watchdog.get_position[watching.type](watching),
-        smooth_position = watchdog.get_position[watching.type](watching), -- Need separate object instance!
-        surface = watchdog.get_surface[watching.type](watching),
+        watching = initial_watchdog,
+        position = watchdog.get_position[initial_watchdog.type](initial_watchdog),
+        smooth_position = watchdog.get_position[initial_watchdog.type](initial_watchdog), -- Need separate object instance!
+        surface = watchdog.get_surface[initial_watchdog.type](initial_watchdog),
         valid = true
     }
     return ret
@@ -61,12 +57,12 @@ end
 --- @param focus FocusInstance
 function focus_behavior.start_following(focus)
     local player = focus.controlling
-    player.set_shortcut_toggled("item-cam", true)
+    player.set_shortcut_toggled(const.name_shortcut, true)
 
     if
         player.cursor_stack
         and player.cursor_stack.valid_for_read
-        and player.cursor_stack.name == "item-cam"
+        and player.cursor_stack.name == const.name_selection_item
     then
         player.clear_cursor()
     end
@@ -91,7 +87,7 @@ function focus_behavior.stop_following(focus)
     local player = focus.controlling
 
     focus.valid = false
-    player.set_shortcut_toggled("item-cam", false)
+    player.set_shortcut_toggled(const.name_shortcut, false)
 
     -- Teleport player to proper surface before reassigning controller
     if game.get_surface(focus.previous_surface_idx) == nil then

@@ -1,203 +1,19 @@
 local watchdog = require("focus-watchdog")
+local transfer_to = require("focus-transfer")
 local utility = require("utility")
 
---- @class WatchInserterCandidateRestrictions
---- @field source? LuaEntity
---- @field target? LuaEntity
---- @field item? ItemIDAndQualityIDPair
---- @field swinging_towards? boolean
-
-local __restrictions_noop = {}
-
---- @param surface LuaSurface
---- @param force ForceID
---- @param search_area BoundingBox
---- @param ref_pos MapPosition
---- @param restrictions WatchInserterCandidateRestrictions
-local function watch_inserter_candidate(surface, force, search_area, ref_pos, restrictions)
-    local best_guess = utility.minimum_of(surface.find_entities_filtered({
-        area = search_area,
-        type = "inserter",
-        force = force
-    }), function (candidate)
-        local held_stack = candidate.held_stack
-        if not held_stack.valid_for_read
-            then return end
-        if restrictions.item ~= nil and (
-            held_stack.name ~= restrictions.item.name
-            or held_stack.quality ~= restrictions.item.quality
-        ) then return end
-        if restrictions.source ~= nil and candidate.pickup_target ~= restrictions.source
-            then return end
-        if restrictions.target ~= nil and candidate.drop_target ~= restrictions.target
-            then return end
-
-        if not restrictions.swinging_towards then
-            return utility.distance(ref_pos, candidate.held_stack_position)
-        end
-
-        local d_hand_to_pickup = utility.distance(candidate.held_stack_position, candidate.pickup_position)
-        if d_hand_to_pickup > utility.inserter_search_d_picking_up_feather
-            then return end
-
-        return d_hand_to_pickup
-    end)
-
-    if best_guess ~= nil then
-        return watchdog.create.item_in_inserter_hand(best_guess)
-    end
-end
-
---- @class WatchRobotCandidateRestrictions
---- @field item? ItemIDAndQualityIDPair
-
---- @param surface LuaSurface
---- @param force ForceID
---- @param search_area BoundingBox
---- @param ref_pos MapPosition
---- @param restrictions WatchRobotCandidateRestrictions
-local function watch_robot_candidate(surface, force, search_area, ref_pos, restrictions)
-    restrictions = restrictions or __restrictions_noop
-
-    local best_guess = utility.minimum_of(surface.find_entities_filtered({
-        area = search_area,
-        type = utility.all_bot,
-        force = force
-    }), function (candidate)
-        -- It would have been nicer to check for a pickup order.
-        -- But because they actually update only every 20 ticks, we'd need a giant surface area scanned every tick
-        -- just so that we catch the bot before it updates when order target (ref_pos) is reached.
-        -- And here we do these checks *after* they update, so the pickup order is gone
-        local inventory = candidate.get_inventory(defines.inventory.robot_cargo)
-        local first_stack = inventory[1]
-        if not first_stack.valid_for_read
-            then return end
-
-        if restrictions.item ~= nil and (
-            first_stack.name ~= restrictions.item.name
-            or first_stack.quality ~= restrictions.item.quality
-        ) then return end
-
-        return utility.distance(ref_pos, candidate.position)
-    end)
-
-    if best_guess ~= nil then
-        return watchdog.create.item_held_by_robot(best_guess)
-    end
-end
-
---- @class WatchItemOnBeltCandidateRestrictions
---- @field item? ItemIDAndQualityIDPair
-
---- @param target_belt_entity LuaEntity
---- @param restrictions WatchItemOnBeltCandidateRestrictions
-local function watch_newest_item_on_belt_candidate(target_belt_entity, restrictions)
-    local best_guess, line_idx = utility.minimum_on_belt(target_belt_entity, function (candidate)
-        if restrictions.item ~= nil and (
-            candidate.stack.name ~= restrictions.item.name
-            or candidate.stack.quality ~= restrictions.item.quality
-        ) then return end
-
-        return -candidate.unique_id -- Pick newest
-    end)
-
-    if best_guess and line_idx then
-        return watchdog.create.item_on_belt(best_guess, line_idx, target_belt_entity)
-    end
-end
-
---- @param entity LuaEntity
---- @param item? ItemIDAndQualityIDPair
-local function watch_next(entity, item)
-    local entity_type = entity.type
-    if utility.is_belt[entity_type] then
-        return watch_newest_item_on_belt_candidate(
-            entity,
-            {item = item}
-        )
-    end
-    if entity_type == "inserter" then
-        return watchdog.create.item_in_inserter_hand(entity)
-    end
-    if utility.is_crafting_machine[entity_type] then
-        return watchdog.create.item_in_crafting_machine(entity)
-    end
-    if utility.is_container[entity_type] then
-        --- Transfer to pickup inserter can happen in same tick.
-        --- If it did we'd see 0 count in inventory
-        local inventory_type = utility.is_container[entity_type]
-        local inventory = entity.get_inventory(inventory_type)
-
-        if inventory.get_item_count(item) > 0 then
-            -- TODO: Coalesce the copypaste
-            if entity.type == "rocket-silo"
-                then return watchdog.create.item_in_rocket_silo(entity, item) end
-            if #entity.cargo_hatches > 0
-                then return watchdog.create.item_in_container_with_cargo_hatches(entity, item) end
-            return watchdog.create.item_in_container(entity, inventory_type, item)
-        end
-
-        utility.debug("watchdog watch_next: item from container was already taken by inserter")
-        return watch_inserter_candidate(
-            entity.surface,
-            entity.force,
-            utility.aabb_expand(entity.bounding_box, utility.inserter_search_d),
-            entity.position,
-            {item = item, source = entity}
-        )
-    end
-end
-
---- @param entity LuaEntity
---- @param item? ItemIDAndQualityIDPair
-local function watch_drop_target(entity, item)
-    if entity.prototype.vector_to_place_result == nil
-        then return end
-
-    if entity.drop_target ~= nil then
-        return watch_next(entity.drop_target, item)
-    end
-
-    local dropped_item_entity = entity.surface.find_entities_filtered({
-        position = entity.drop_position,
-        type = {"item-entity"},
-        force = entity.force
-    })
-    if dropped_item_entity == nil
-        then return end
-    return watch_next(dropped_item_entity, item)
-end
-
---- @param entity LuaEntity
---- @param item? ItemIDAndQualityIDPair
---- @param also_drop_target? boolean
-local function watch_taken_out_of_building(entity, item, also_drop_target)
-    return
-        (also_drop_target and watch_drop_target(entity, item))
-        or watch_inserter_candidate(
-            entity.surface,
-            entity.force,
-            utility.aabb_expand(entity.bounding_box, utility.inserter_search_d),
-            entity.position,
-            {source = entity, item = item}
-        ) or watch_robot_candidate(
-            entity.surface,
-            entity.force,
-            utility.aabb_expand(entity.bounding_box, utility.robot_search_d),
-            entity.position,
-            {item = item}
-        )
-end
+local update_map = {}
+local destroy_map = {}
 
 --- @param focus FocusInstance
-local function item_entity(focus)
+update_map["item-entity"] = function (focus)
     return true
 end
 
 --- @param focus FocusInstance
 --- @param handle LuaEntity
 --- @param pin PinItemOnBelt
-local function item_on_belt(focus, handle, pin)
+update_map["item-on-belt"] = function (focus, handle, pin)
     --- @type LuaEntity?
     local next_belt = handle
     --- @type integer?
@@ -227,7 +43,7 @@ local function item_on_belt(focus, handle, pin)
     -- Taken by inserter, bot, or deconstructed
     if it == nil then
         utility.debug("watchdog changing: can't find item on belt with my id")
-        focus.watching = watch_inserter_candidate(
+        focus.watching = transfer_to.inserter_nearby(
             handle.surface,
             handle.force,
             utility.aabb_around(focus.position, utility.inserter_search_d),
@@ -237,7 +53,7 @@ local function item_on_belt(focus, handle, pin)
         return true
     end
 
-    if it == nil
+    if it == nil or next_line_idx == nil or next_belt == nil
         then return false end
     focus.watching.handle = next_belt
     pin.it = it
@@ -247,10 +63,7 @@ end
 
 --- @param focus FocusInstance
 --- @param handle LuaEntity
-local function item_in_inserter_hand(focus, handle)
-    --- @type LuaEntity
-    local handle = focus.watching.handle
-
+update_map["item-in-inserter-hand"] = function (focus, handle)
     if handle.held_stack.valid_for_read
         then return true end
 
@@ -262,31 +75,36 @@ local function item_in_inserter_hand(focus, handle)
         return false
     end
 
-    focus.watching = watch_next(dropped_into, focus.watching.item)
+    focus.watching = transfer_to.next(dropped_into, focus.watching.item)
     return true
 end
 
 --- @param focus FocusInstance
 --- @param handle LuaEntity
-local function item_in_container(focus, handle)
+update_map["item-in-container"] = function (focus, handle)
     -- Always query if item got taken.
     -- inventory.get_item_count is expensive for huge space platform cargo
-    local first_taken_by = watch_taken_out_of_building(handle, focus.watching.item)
+    local first_taken_by = transfer_to.taken_out_of_building(handle, focus.watching.item)
     if first_taken_by ~= nil then
         focus.watching = first_taken_by
     end
     return true
 end
+local item_in_container = update_map["item-in-container"]
 
 --- @param focus FocusInstance
 --- @param handle LuaEntity
-local function item_in_crafting_machine(focus, handle)
-    if handle.products_finished == focus.watching.pin.initial_products_finished
+--- @param pin PinItemInCraftingMachine
+update_map["item-in-crafting-machine"] = function (focus, handle, pin)
+    if handle.products_finished == pin.initial_products_finished
         then return true end
 
-    utility.debug("watchdog changing: products_finished increased")
+    if not pin.announced_change then
+        utility.debug("watchdog changing: products_finished increased")
+        pin.announced_change = true
+    end
 
-    local first_taken_by = watch_taken_out_of_building(handle, nil, true)
+    local first_taken_by = transfer_to.taken_out_of_building(handle, nil, true)
     if first_taken_by ~= nil then
         -- Crafting machine put its (first) output here
         focus.watching = first_taken_by
@@ -302,7 +120,7 @@ end
 --- @param focus FocusInstance
 --- @param handle LuaEntity
 --- @param pin PinItemHeldByRobot
-local function item_held_by_robot(focus, handle, pin)
+update_map["item-held-by-robot"] = function (focus, handle, pin)
     local drop_target = pin.drop_target
 
     local order = handle.robot_order_queue[1]
@@ -317,14 +135,14 @@ local function item_held_by_robot(focus, handle, pin)
     if drop_target == nil or not drop_target.valid
         then return false end
 
-    focus.watching = watch_next(drop_target, focus.watching.item)
+    focus.watching = transfer_to.next(drop_target, focus.watching.item)
     return true
 end
 
 --- @param focus FocusInstance
 --- @param handle LuaEntity
 --- @param pin PinItemComingFromMiningDrill
-local function item_coming_from_mining_drill(focus, handle, pin)
+update_map["item-coming-from-mining-drill"] = function (focus, handle, pin)
     local mining_target = handle.mining_target
     if mining_target == nil or not mining_target.valid then
         utility.debug("watchdog lost: no more mining_target")
@@ -351,9 +169,9 @@ local function item_coming_from_mining_drill(focus, handle, pin)
     end
 
     -- Belts have special handling because it can only drop in predetermined locations
-    -- TODO: watch_drop_target should be doing this
+    -- TODO: transfer_to.drop_target should be doing this
     if not utility.is_belt[drop_target.type] then
-        focus.watching = watch_next(drop_target)
+        focus.watching = transfer_to.next(drop_target)
         return true
     end
 
@@ -376,25 +194,19 @@ end
 
 --- @param focus FocusInstance
 --- @param handle LuaEntity
---- @param pin PinItemInRocketSilo
-local function item_in_rocket_silo(focus, handle, pin)
+update_map["item-in-rocket-silo"] = function (focus, handle)
     if handle.rocket ~= nil and handle.rocket_silo_status >= defines.rocket_silo_status.launch_starting then
         utility.debug("watchdog changing: rocket_silo_status launch_started")
         focus.watching = watchdog.create.item_in_rocket(handle.rocket, focus.watching.item)
-        return true -- Don't check inventory afterwards
+        return true
     end
 
-    if pin.inventory.get_item_count(focus.watching.item) == 0 then
-        utility.debug("watchdog changing: get_item_count for tracked item 0")
-        focus.watching = watch_taken_out_of_building(handle, focus.watching.item)
-    end
-
-    return true
+    return item_in_container(focus, handle)
 end
 
 --- @param focus FocusInstance
 --- @param handle LuaEntity
-local function item_in_rocket(focus, handle)
+update_map["item-in-rocket"] = function (focus, handle)
     if handle.cargo_pod ~= nil and handle.cargo_pod.cargo_pod_state == "ascending" then
         utility.debug("watchdog changing: cargo_pod_state ascending")
         focus.watching = watchdog.create.item_in_cargo_pod(handle.cargo_pod, focus.watching.item)
@@ -403,104 +215,29 @@ local function item_in_rocket(focus, handle)
     return true
 end
 
---- @param cargo_bay LuaEntity
-local function find_matching_landing_pad(cargo_bay)
-    local landing_pads = cargo_bay.surface.find_entities_filtered({
-        type = {"cargo-landing-pad"},
-        force = cargo_bay.force
-    })
-
-    for _, candidate in ipairs(landing_pads) do
-        if utility.contains(candidate.get_cargo_bays(), cargo_bay) then
-            return candidate
-        end
-    end
-end
---- @param destination CargoDestination
-local function select_pod_drop_target(destination)
-    if destination.type ~= defines.cargo_destination.station then
-        utility.debug("watchdog select_pod_drop_target: cargo_pod_destination is not station")
-        return nil
-    end
-
-    local target = destination.station
-    if target == nil then
-        utility.debug("watchdog select_pod_drop_target: station is nil")
-        return nil
-    end
-
-    if target.type ~= "cargo-bay"
-        then return target end
-
-    if destination.space_platform ~= nil
-        then return destination.space_platform.hub end
-    if destination.surface == nil then
-        utility.debug("watchdog select_pod_drop_target: surface is nil") -- What?
-        return nil
-    end
-    utility.debug("watchdog select_pod_drop_target: find_matching_landing_pad")
-    return find_matching_landing_pad(target)
-end
 --- @param focus FocusInstance
 --- @param handle LuaEntity
 --- @param pin PinItemInCargoPod
-local function item_in_cargo_pod(focus, handle, pin)
+update_map["item-in-cargo-pod"] = function (focus, handle, pin)
     if pin.drop_target == nil and handle.cargo_pod_state == "parking" then
-        local destination = select_pod_drop_target(handle.cargo_pod_destination)
-
         utility.debug("watchdog updated: drop_target selected")
-        pin.drop_target = destination
+        pin.drop_target = transfer_to.pod_drop_target_normalized(handle.cargo_pod_destination)
         return true
     end
 
     -- The actual watchdog switch happens after destroy
     return true
 end
---- @param focus FocusInstance
---- @param handle LuaEntity
---- @param pin PinItemInCargoPod
-local function item_in_cargo_pod_after_destroy(focus, handle, pin)
-    utility.debug("watchdog changing: handle got destroyed")
-    focus.watching = watch_next(pin.drop_target, focus.watching.item)
-    return true
-end
-
---- @param entity LuaEntity
-local function watch_outgoing_cargo_pod(entity, item)
-    local has_busy_outgoing_hatch = utility.first(entity.cargo_hatches, function (hatch)
-        return hatch.is_output_compatible and (hatch.busy or hatch.reserved)
-    end)
-    if not has_busy_outgoing_hatch
-        then return end
-
-    local nearby_pod = entity.surface.find_entities_filtered({
-        area = entity.bounding_box,
-        type = {"cargo-pod"},
-        force = entity.force
-    })
-    for _, candidate in ipairs(nearby_pod) do
-        local inventory = candidate.get_inventory(defines.inventory.cargo_unit)
-        if
-            (candidate.cargo_pod_state == "awaiting_launch"
-            or candidate.cargo_pod_state == "ascending")
-            and inventory.get_item_count(item) > 0
-        then
-            return watchdog.create.item_in_cargo_pod(candidate, item)
-        end
-    end
-end
 
 --- @param focus FocusInstance
 --- @param handle LuaEntity
-local function item_in_container_with_cargo_hatches(focus, handle)
+update_map["item-in-container-with-cargo-hatches"] = function (focus, handle)
     local item = focus.watching.item
 
     local first_taken_by =
-        watch_outgoing_cargo_pod(handle, item)
-        or utility.first(handle.get_cargo_bays(), function (bay)
-            if not bay.valid
-                then return end
-            return watch_outgoing_cargo_pod(bay, item)
+        transfer_to.outgoing_cargo_pod(handle, item) -- Hub / landing pad itself
+        or utility.first(handle.get_cargo_bays(), function (bay) -- Its cargo bays
+            return bay.valid and transfer_to.outgoing_cargo_pod(bay, item) or nil
         end)
 
     if first_taken_by ~= nil then
@@ -508,26 +245,16 @@ local function item_in_container_with_cargo_hatches(focus, handle)
         return true
     end
 
-    -- It's also a container. Inherit container update behavior
     return item_in_container(focus, handle)
 end
 
-local map = {
-    ["item-entity"] = item_entity,
-    ["item-on-belt"] = item_on_belt,
-    ["item-in-inserter-hand"] = item_in_inserter_hand,
-    ["item-in-container"] = item_in_container,
-    ["item-in-crafting-machine"] = item_in_crafting_machine,
-    ["item-held-by-robot"] = item_held_by_robot,
-    ["item-coming-from-mining-drill"] = item_coming_from_mining_drill,
-    ["item-in-rocket-silo"] = item_in_rocket_silo,
-    ["item-in-rocket"] = item_in_rocket,
-    ["item-in-cargo-pod"] = item_in_cargo_pod,
-    ["item-in-container-with-cargo-hatches"] = item_in_container_with_cargo_hatches
-}
-local map_after_destroy = {
-    ["item-in-cargo-pod"] = item_in_cargo_pod_after_destroy
-}
+--- @param focus FocusInstance
+--- @param pin PinItemInCargoPod
+destroy_map["item-in-cargo-pod"] = function (focus, pin)
+    utility.debug("watchdog changing: handle got destroyed")
+    focus.watching = transfer_to.next(pin.drop_target, focus.watching.item)
+    return true
+end
 
 --- @class SmoothingDefinition
 --- @field speed? number
@@ -555,9 +282,17 @@ local function extend_smooth(focus, kind, type)
         then return end
 
     local previous_final_tick = focus.smoothing and focus.smoothing.final_tick or game.tick
+    local using_speed -- Maximum of current and new
+    if focus.smoothing and focus.smoothing.speed == nil then
+        using_speed = nil
+    elseif focus.smoothing then
+        using_speed = math.max(new_smoothing.speed, focus.smoothing.speed)
+    else
+        using_speed = new_smoothing.speed
+    end
     focus.smoothing = {
-        final_tick = game.tick + new_smoothing.ticks,
-        speed = new_smoothing.speed,
+        final_tick = math.max(previous_final_tick, game.tick + new_smoothing.ticks),
+        speed = using_speed,
         min_speed = new_smoothing.min_speed,
         mul = new_smoothing.mul
     }
@@ -572,10 +307,10 @@ return function (focus)
     local last_watching_type = watching.type
 
     if not watching.handle.valid then
-        local fnd = map_after_destroy[watching.type]
+        local fnd = destroy_map[watching.type]
         if
             not fnd
-            or not fnd(focus, watching.handle, watching.pin)
+            or not fnd(focus, watching.pin)
             or focus.watching == nil -- After calling fnd
         then
             focus.valid = false
@@ -591,7 +326,7 @@ return function (focus)
         end
     end
 
-    local fn = map[watching.type]
+    local fn = update_map[watching.type]
 
     if
         not fn

@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.8.6
+Date: 2025-04-30
+  Bugfixes:
+    - Fixed crash when other mods use register_on_object_destroyed registration because of a sanity check too late (https://mods.factorio.com/mod/item-cam-2/discussion/681290427210605ec45a8a32)
+---------------------------------------------------------------------------------------------------
 Version: 0.8.5
 Date: 2025-04-30
   Features:

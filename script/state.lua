@@ -72,12 +72,11 @@ end
 --- @param destroy_regnumber integer
 function landing_pads.forget(destroy_regnumber)
     local identifier = landing_pads.v_dreg[destroy_regnumber]
+    if identifier == nil
+        then return end -- Not ours to deal with
     landing_pads.v_dreg[destroy_regnumber] = nil
 
     local surface_idx = identifier.surface_idx
-    if identifier == nil
-        then return end
-
     landing_pads.v[surface_idx][identifier.unit_number] = nil
 
     local next_cnt = landing_pads.v_cnt[surface_idx] - 1

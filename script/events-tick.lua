@@ -1,6 +1,22 @@
+local const = require("const")
 local state = require("state")
 local utility = require("utility")
 local focus_behavior = require("focus-behavior")
+local focus_update = require("focus-update")
+
+local map_trigger_effects = {}
+
+--- @param event EventData.on_script_trigger_effect
+map_trigger_effects[const.name_trigger_remember_landing_pad] = function (event)
+    state.landing_pads.remember(event.cause_entity)
+end
+
+--- @param event EventData.on_script_trigger_effect
+map_trigger_effects[const.name_trigger_check_cargo_pod_follow] = function (event)
+    -- When created both cargo_pod_origin and cargo_pod_destination read nil.
+    -- Defer calling environment_changed to next tick when the cargo pod sees where it is and not where it isn't
+    table.insert(state.env_changed_next_tick, event.cause_entity)
+end
 
 local function first_surface()
     for _, surface in pairs(game.surfaces) do
@@ -30,12 +46,16 @@ script.on_event(defines.events.on_tick, function ()
 end)
 
 --- @param player_idx integer
-local function update_focus(player_idx)
+local function tick_one_focus(player_idx)
     local focus = state.focuses.get(player_idx)
     if not focus.valid then
-        utility.debug("ambiguous update_focus call for player_idx "..player_idx.." whose focus is invalid")
+        utility.debug("ambiguous tick_one_focus call for player_idx "..player_idx.." whose focus is invalid")
         state.focuses.set(player_idx, nil)
         return
+    end
+
+    for _, env_changed_entity in ipairs(state.env_changed_next_tick) do
+        focus_update.environment_changed(focus, env_changed_entity)
     end
 
     local last_type = focus.watching.type
@@ -45,13 +65,15 @@ local function update_focus(player_idx)
         return
     end
 
+    state.focuses.set(player_idx, nil)
+    if not focus.controlling.valid
+        then return end
+    focus_behavior.stop_following(focus)
+
     local gps_tag = "[gps="..focus.position.x..","..focus.position.y..","..focus.surface.name.."]"
     local tell_str = "lost focus, last known was "..last_type.." at "..gps_tag
     utility.debug(tell_str)
     focus.controlling.print(tell_str)
-
-    focus_behavior.stop_following(focus)
-    state.focuses.set(player_idx, nil)
 end
 
 script.on_event(defines.events.on_object_destroyed, function (event)
@@ -61,6 +83,21 @@ script.on_event(defines.events.on_object_destroyed, function (event)
         return
     end
     for player_idx in pairs(state.focuses.v) do
-        update_focus(player_idx)
+        tick_one_focus(player_idx)
     end
+
+    -- Clear env changed array
+    local env_changed_cnt = #state.env_changed_next_tick
+    for i = 1, env_changed_cnt do
+        state.env_changed_next_tick[i] = nil
+    end
+end)
+
+script.on_event(defines.events.on_script_trigger_effect, function (event)
+    if event.cause_entity == nil
+        then return end
+    local fn = map_trigger_effects[event.effect_id]
+    if not fn
+        then return end
+    fn(event)
 end)

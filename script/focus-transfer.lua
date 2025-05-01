@@ -186,66 +186,25 @@ function transfer_to.taken_out_of_building(entity, item, also_drop_target)
         )
 end
 
---- @param entity_with_hatches LuaEntity
-function transfer_to.outgoing_cargo_pod(entity_with_hatches, item)
-    local has_busy_outgoing_hatch = utility.first(entity_with_hatches.cargo_hatches, function (hatch)
-        return hatch.is_output_compatible and (hatch.busy or hatch.reserved)
-    end)
-    if not has_busy_outgoing_hatch
-        then return end
-
-    local nearby_pod = entity_with_hatches.surface.find_entities_filtered({
-        area = entity_with_hatches.bounding_box,
-        type = {"cargo-pod"},
-        force = entity_with_hatches.force
-    })
-    for _, candidate in ipairs(nearby_pod) do
-        local inventory = candidate.get_inventory(defines.inventory.cargo_unit)
-        assert(inventory ~= nil, "transfer_to.outgoing_cargo_pod doesn't have targeted inventory")
-
-        if
-            (candidate.cargo_pod_state == "awaiting_launch"
-            or candidate.cargo_pod_state == "ascending")
-            and inventory.get_item_count(item) > 0
-        then
-            return watchdog.create.item_in_cargo_pod(candidate, item)
-        end
-    end
-end
-
---- @param destination CargoDestination
-function transfer_to.pod_drop_target_normalized(destination)
-    if destination.type ~= defines.cargo_destination.station then
-        utility.debug("transfer_to.pod_drop_target_normalized: cargo_pod_destination is not station")
-        return nil
+--- @param target LuaEntity
+function transfer_to.pod_associate_owner(target)
+    if target.type ~= "cargo-bay" then
+        return target
     end
 
-    local target = destination.station
-    if target == nil then
-        -- TODO: It drops as a container
-        utility.debug("transfer_to.pod_drop_target_normalized: station is nil")
-        return nil
-    end
-
-    if target.type ~= "cargo-bay"
-        then return target end
-
-    if destination.space_platform ~= nil
-        then return destination.space_platform.hub end
-    if destination.surface == nil then
-        utility.debug("transfer_to.pod_drop_target_normalized: surface is nil") -- What?
-        return nil
+    if target.surface.platform ~= nil then
+        return target.surface.platform.hub
     end
 
     local landing_pads_here = state.landing_pads.all_on(target.surface_index)
-    assert(landing_pads_here ~= nil, "transfer_to.pod_drop_target_normalized retrieved no landing pads for a surface that apparently has one")
+    assert(landing_pads_here ~= nil, "transfer_to.pod_associate_bay_to_main retrieved no landing pads for a surface that apparently has one")
 
     for _, candidate in pairs(landing_pads_here) do
         if utility.contains(candidate.get_cargo_bays(), target) then
             return candidate
         end
     end
-    assert(false, "transfer_to.pod_drop_target_normalized couldn't backwards match cargo bay to its landing pad because it's not remembered")
+    assert(false, "transfer_to.pod_associate_bay_to_main couldn't backwards match cargo bay to its landing pad because it's not remembered")
 end
 
 return transfer_to

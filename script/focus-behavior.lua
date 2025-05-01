@@ -1,6 +1,5 @@
 local const = require("const")
 local utility = require("utility")
-local focus_select = require("focus-select")
 local focus_update = require("focus-update")
 local watchdog = require("focus-watchdog")
 
@@ -131,7 +130,7 @@ function focus_behavior.update(focus)
         return false
     end
 
-    if not focus_update(focus)
+    if not focus_update.tick(focus)
         then return false end
 
     return true

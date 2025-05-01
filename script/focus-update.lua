@@ -2,18 +2,19 @@ local watchdog = require("focus-watchdog")
 local transfer_to = require("focus-transfer")
 local utility = require("utility")
 
-local update_map = {}
-local destroy_map = {}
+local handle_invalid_map = {}
+local tick_map = {}
+local environment_changed_map = {}
 
 --- @param focus FocusInstance
-update_map["item-entity"] = function (focus)
+tick_map["item-entity"] = function (focus)
     return true
 end
 
 --- @param focus FocusInstance
 --- @param handle LuaEntity
 --- @param pin PinItemOnBelt
-update_map["item-on-belt"] = function (focus, handle, pin)
+tick_map["item-on-belt"] = function (focus, handle, pin)
     --- @type LuaEntity?
     local next_belt = handle
     --- @type integer?
@@ -63,7 +64,7 @@ end
 
 --- @param focus FocusInstance
 --- @param handle LuaEntity
-update_map["item-in-inserter-hand"] = function (focus, handle)
+tick_map["item-in-inserter-hand"] = function (focus, handle)
     if handle.held_stack.valid_for_read
         then return true end
 
@@ -81,7 +82,7 @@ end
 
 --- @param focus FocusInstance
 --- @param handle LuaEntity
-update_map["item-in-container"] = function (focus, handle)
+tick_map["item-in-container"] = function (focus, handle)
     -- Always query if item got taken.
     -- inventory.get_item_count is expensive for huge space platform cargo
     local first_taken_by = transfer_to.taken_out_of_building(handle, focus.watching.item)
@@ -90,12 +91,12 @@ update_map["item-in-container"] = function (focus, handle)
     end
     return true
 end
-local item_in_container = update_map["item-in-container"]
+local item_in_container = tick_map["item-in-container"]
 
 --- @param focus FocusInstance
 --- @param handle LuaEntity
 --- @param pin PinItemInCraftingMachine
-update_map["item-in-crafting-machine"] = function (focus, handle, pin)
+tick_map["item-in-crafting-machine"] = function (focus, handle, pin)
     if handle.products_finished == pin.initial_products_finished
         then return true end
 
@@ -120,7 +121,7 @@ end
 --- @param focus FocusInstance
 --- @param handle LuaEntity
 --- @param pin PinItemHeldByRobot
-update_map["item-held-by-robot"] = function (focus, handle, pin)
+tick_map["item-held-by-robot"] = function (focus, handle, pin)
     local drop_target = pin.drop_target
 
     local order = handle.robot_order_queue[1]
@@ -142,7 +143,7 @@ end
 --- @param focus FocusInstance
 --- @param handle LuaEntity
 --- @param pin PinItemComingFromMiningDrill
-update_map["item-coming-from-mining-drill"] = function (focus, handle, pin)
+tick_map["item-coming-from-mining-drill"] = function (focus, handle, pin)
     local mining_target = handle.mining_target
     if mining_target == nil or not mining_target.valid then
         utility.debug("watchdog lost: no more mining_target")
@@ -194,7 +195,7 @@ end
 
 --- @param focus FocusInstance
 --- @param handle LuaEntity
-update_map["item-in-rocket-silo"] = function (focus, handle)
+tick_map["item-in-rocket-silo"] = function (focus, handle)
     if handle.rocket ~= nil and handle.rocket_silo_status >= defines.rocket_silo_status.launch_starting then
         utility.debug("watchdog changing: rocket_silo_status launch_started")
         focus.watching = watchdog.create.item_in_rocket(handle.rocket, focus.watching.item)
@@ -206,7 +207,7 @@ end
 
 --- @param focus FocusInstance
 --- @param handle LuaEntity
-update_map["item-in-rocket"] = function (focus, handle)
+tick_map["item-in-rocket"] = function (focus, handle)
     if handle.cargo_pod ~= nil and handle.cargo_pod.cargo_pod_state == "ascending" then
         utility.debug("watchdog changing: cargo_pod_state ascending")
         focus.watching = watchdog.create.item_in_cargo_pod(handle.cargo_pod, focus.watching.item)
@@ -218,41 +219,74 @@ end
 --- @param focus FocusInstance
 --- @param handle LuaEntity
 --- @param pin PinItemInCargoPod
-update_map["item-in-cargo-pod"] = function (focus, handle, pin)
-    if pin.drop_target == nil and handle.cargo_pod_state == "parking" then
-        utility.debug("watchdog updated: drop_target selected")
-        pin.drop_target = transfer_to.pod_drop_target_normalized(handle.cargo_pod_destination)
+tick_map["item-in-cargo-pod"] = function (focus, handle, pin)
+    if
+        handle.cargo_pod_state ~= "parking"
+        or (pin.drop_target ~= nil and pin.drop_target.valid)
+    then
         return true
     end
 
-    -- The actual watchdog switch happens after destroy
+    local destination = handle.cargo_pod_destination
+    if destination.type ~= defines.cargo_destination.station then
+        utility.debug("watchdog lost: cargo_pod_destination is not station")
+        return false
+    end
+
+    local target = destination.station
+    if target == nil then
+        -- TODO: It drops as a container
+        utility.debug("watchdog lost: station is nil")
+        return false
+    end
+
+    pin.drop_target = transfer_to.pod_associate_owner(target)
+    utility.debug("watchdog updated: drop_target selected")
+
+    -- The actual watchdog switch happens when cargo pod entity is destroyed
     return true
 end
 
 --- @param focus FocusInstance
 --- @param handle LuaEntity
-update_map["item-in-container-with-cargo-hatches"] = function (focus, handle)
-    local item = focus.watching.item
+--- @param pin PinItemInCargoPod
+handle_invalid_map["item-in-cargo-pod"] = function (focus, handle, pin)
+    utility.debug("watchdog changing: handle got destroyed")
+    focus.watching = transfer_to.next(pin.drop_target, focus.watching.item)
+    return true
+end
 
-    local first_taken_by =
-        transfer_to.outgoing_cargo_pod(handle, item) -- Hub / landing pad itself
-        or utility.first(handle.get_cargo_bays(), function (bay) -- Its cargo bays
-            return bay.valid and transfer_to.outgoing_cargo_pod(bay, item) or nil
-        end)
-
-    if first_taken_by ~= nil then
-        focus.watching = first_taken_by
-        return true
-    end
+--- @param focus FocusInstance
+--- @param handle LuaEntity
+tick_map["item-in-container-with-cargo-hatches"] = function (focus, handle)
+    -- The actual watchdog switch happens when environment_changed
 
     return item_in_container(focus, handle)
 end
 
 --- @param focus FocusInstance
---- @param pin PinItemInCargoPod
-destroy_map["item-in-cargo-pod"] = function (focus, pin)
-    utility.debug("watchdog changing: handle got destroyed")
-    focus.watching = transfer_to.next(pin.drop_target, focus.watching.item)
+--- @param handle LuaEntity
+--- @param pin nil
+--- @param cause_entity LuaEntity
+environment_changed_map["item-in-container-with-cargo-hatches"] = function (focus, handle, pin, cause_entity)
+    if
+        cause_entity.type ~= "cargo-pod"
+        or cause_entity.cargo_pod_state ~= "awaiting_launch"
+        or cause_entity.surface ~= handle.surface
+        or cause_entity.cargo_pod_origin ~= handle
+    then
+        return true
+    end
+
+    local pod_inventory = cause_entity.get_inventory(defines.inventory.cargo_unit)
+    if
+        pod_inventory == nil -- Modded pod I guess?
+        or pod_inventory.get_item_count(focus.watching.item) == 0
+    then
+        return true
+    end
+
+    focus.watching = watchdog.create.item_in_cargo_pod(cause_entity, focus.watching.item)
     return true
 end
 
@@ -301,48 +335,45 @@ local function extend_smooth(focus, kind, type)
     utility.debug("smoothing extended "..extended_by.." ticks: "..serpent.line(focus.smoothing))
 end
 
+--- @param map table<string, fun(focus: FocusInstance, handle: LuaEntity, pin?: any, cause_entity?: LuaEntity): boolean>
 --- @param focus FocusInstance
-return function (focus)
+--- @param required boolean
+--- @param cause_entity? LuaEntity
+local function apply_fn(map, focus, required, cause_entity)
     local watching = focus.watching
     local last_watching_type = watching.type
 
-    if not watching.handle.valid then
-        local fnd = destroy_map[watching.type]
-        if
-            not fnd
-            or not fnd(focus, watching.pin)
-            or focus.watching == nil -- After calling fnd
-        then
-            focus.valid = false
-            return false
-        end
+    local fn = map[last_watching_type]
+    if not fn then
+        return required end
+    if not fn(focus, watching.handle, watching.pin, cause_entity)
+        then return false end
+    if focus.watching == nil
+        then return false end
 
-        watching = focus.watching
-        if watching.type ~= last_watching_type then
-            utility.debug("invalid handle change focus from "..last_watching_type.." to "..watching.type)
-            extend_smooth(focus, map_smooth_speed_out, last_watching_type)
-            extend_smooth(focus, map_smooth_speed_in, watching.type)
-            last_watching_type = watching.type
-        end
-    end
-
-    local fn = update_map[watching.type]
-
-    if
-        not fn
-        or not fn(focus, watching.handle, watching.pin)
-        or focus.watching == nil -- After calling fn
-    then
-        focus.valid = false
-        return false
-    end
-
-    watching = focus.watching
-    if watching.type ~= last_watching_type then
-        utility.debug("change focus from "..last_watching_type.." to "..watching.type)
-        extend_smooth(focus, map_smooth_speed_out, last_watching_type)
-        extend_smooth(focus, map_smooth_speed_in, watching.type)
-    end
-
+    if focus.watching.type == last_watching_type
+        then return true end
+    utility.debug("focus watchdog changed from "..last_watching_type.." to "..watching.type)
+    extend_smooth(focus, map_smooth_speed_out, last_watching_type)
+    extend_smooth(focus, map_smooth_speed_in, watching.type)
+    last_watching_type = watching.type
     return true
 end
+
+local focus_update = {}
+
+--- @param focus FocusInstance
+function focus_update.tick(focus)
+    if not focus.watching.handle.valid and not apply_fn(handle_invalid_map, focus, true)
+        then return false end
+
+    return apply_fn(tick_map, focus, true)
+end
+
+--- @param focus FocusInstance
+--- @param cause_entity LuaEntity
+function focus_update.environment_changed(focus, cause_entity)
+    return apply_fn(environment_changed_map, focus, false, cause_entity)
+end
+
+return focus_update

@@ -89,21 +89,23 @@ end
 
 local state = {
     focuses = focuses,
-    landing_pads = landing_pads
+    landing_pads = landing_pads,
+    --- @type LuaEntity[]
+    env_changed_next_tick = nil
 }
 
 function state.retrieve_from_storage()
     storage.focuses = storage.focuses or {}
-    focuses.v = storage.focuses
-
     storage.landing_pads = storage.landing_pads or {}
-    landing_pads.v = storage.landing_pads
-
     storage.landing_pads_cnt = storage.landing_pads_cnt or {}
-    landing_pads.v_cnt = storage.landing_pads_cnt
-
     storage.landing_pads_dreg = storage.landing_pads_dreg or {}
+    storage.env_changed_next_tick = storage.env_changed_next_tick or {}
+
+    focuses.v = storage.focuses
+    landing_pads.v = storage.landing_pads
+    landing_pads.v_cnt = storage.landing_pads_cnt
     landing_pads.v_dreg = storage.landing_pads_dreg
+    state.env_changed_next_tick = storage.env_changed_next_tick
 end
 
 return state

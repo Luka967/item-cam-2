@@ -240,7 +240,7 @@ tick_map["item-in-cargo-pod"] = function (focus, handle, pin)
         return false
     end
 
-    pin.drop_target = transfer_to.pod_associate_owner(target)
+    pin.drop_target = transfer_to.bay_associate_owner(target)
     utility.debug("watchdog updated: drop_target selected")
 
     -- The actual watchdog switch happens when cargo pod entity is destroyed
@@ -299,13 +299,31 @@ end
 --- @type table<string, SmoothingDefinition>
 local map_smooth_speed_in = {
     ["item-in-inserter-hand"] = {speed = 0.25, ticks = 60},
-    ["item-in-container-with-cargo-hatches"] = {min_speed = 0.1, mul = 0.1, ticks = 120}
+    ["item-in-container-with-cargo-hatches"] = {min_speed = 0.1, mul = 0.1, ticks = 120},
+    ["item-in-cargo-pod"] = {min_speed = 0.1, mul = 0.1, ticks = 120}
 }
 --- @type table<string, SmoothingDefinition>
 local map_smooth_speed_out = {
-    ["item-in-inserter-hand"] = {speed = 0.25, ticks = 60},
-    ["item-in-container-with-cargo-hatches"] = {min_speed = 0.1, mul = 0.1, ticks = 120}
+    ["item-in-inserter-hand"] = {speed = 0.25, ticks = 60}
 }
+
+--- @type FocusSmoothingState
+local __no_smoothing = {
+    final_tick = 0,
+    speed = 0,
+    min_speed = nil,
+    mul = nil
+}
+---@param a number
+---@param b number
+---@param nil_larger boolean
+local function max_with_nil(a, b, nil_larger)
+    if a == nil or b == nil then
+        if nil_larger then return nil
+        else return a or b end
+    end
+    return math.max(a, b)
+end
 
 --- @param focus FocusInstance
 --- @param kind table<string, SmoothingDefinition>
@@ -315,24 +333,31 @@ local function extend_smooth(focus, kind, type)
     if not new_smoothing
         then return end
 
-    local previous_final_tick = focus.smoothing and focus.smoothing.final_tick or game.tick
-    local using_speed -- Maximum of current and new
-    if focus.smoothing and focus.smoothing.speed == nil then
-        using_speed = nil
-    elseif focus.smoothing then
-        using_speed = math.max(new_smoothing.speed, focus.smoothing.speed)
-    else
-        using_speed = new_smoothing.speed
-    end
-    focus.smoothing = {
-        final_tick = math.max(previous_final_tick, game.tick + new_smoothing.ticks),
-        speed = using_speed,
+    local prev = focus.smoothing or __no_smoothing
+    local next = {
+        final_tick = game.tick + new_smoothing.ticks,
+        speed = new_smoothing.speed,
         min_speed = new_smoothing.min_speed,
         mul = new_smoothing.mul
     }
+    next.final_tick = math.max(next.final_tick, prev.final_tick)
+    next.speed = max_with_nil(next.speed, prev.speed, true)
+    next.min_speed = max_with_nil(next.min_speed, prev.min_speed, false)
+    next.mul = max_with_nil(next.mul, prev.mul, false)
 
-    local extended_by = focus.smoothing.final_tick - previous_final_tick
-    utility.debug("smoothing extended "..extended_by.." ticks: "..serpent.line(focus.smoothing))
+    if
+        new_smoothing.speed ~= nil
+        and next.min_speed ~= nil
+        and new_smoothing.speed > next.min_speed
+    then
+        -- If previous has min_speed, but new_smoothing defines speed, that should become next's min_speed
+        next.min_speed = new_smoothing.speed
+    end
+
+    local previous_final_tick = focus.smoothing and focus.smoothing.final_tick or game.tick
+    local extended_by = next.final_tick - previous_final_tick
+    focus.smoothing = next
+    utility.debug("smoothing extended "..extended_by.." ticks: "..serpent.line(prev).." -> "..serpent.line(next))
 end
 
 --- @param map table<string, fun(focus: FocusInstance, handle: LuaEntity, pin?: any, cause_entity?: LuaEntity): boolean>
@@ -353,10 +378,9 @@ local function apply_fn(map, focus, required, cause_entity)
 
     if focus.watching.type == last_watching_type
         then return true end
-    utility.debug("focus watchdog changed from "..last_watching_type.." to "..watching.type)
+    utility.debug("focus watchdog changed from "..last_watching_type.." to "..focus.watching.type)
     extend_smooth(focus, map_smooth_speed_out, last_watching_type)
-    extend_smooth(focus, map_smooth_speed_in, watching.type)
-    last_watching_type = watching.type
+    extend_smooth(focus, map_smooth_speed_in, focus.watching.type)
     return true
 end
 

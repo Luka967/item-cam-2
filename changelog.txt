@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.8.8
+Date: 2025-05-01
+  Minor Features:
+    - You can now start following by selecting a cargo pod
+  Bugfixes:
+    - Fixed smoothing from cargo pod quickly to inserter being improperly applied
+---------------------------------------------------------------------------------------------------
 Version: 0.8.7
 Date: 2025-05-01
   Optimizations:

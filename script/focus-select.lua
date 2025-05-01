@@ -1,3 +1,4 @@
+local transfer_to = require("focus-transfer")
 local watchdog = require("focus-watchdog")
 local utility = require("utility")
 
@@ -44,6 +45,11 @@ local function container_with_contents(selected)
 end
 
 --- @param selected LuaEntity
+local function cargo_bay_proxy_to_main_container(selected)
+    return container_with_contents(transfer_to.bay_associate_owner(selected))
+end
+
+--- @param selected LuaEntity
 local function robot_holding_item(selected)
     local inventory = selected.get_inventory(defines.inventory.robot_cargo)
     assert(inventory ~= nil, "select robot_holding_item on robot doesn't have targeted inventory")
@@ -72,7 +78,8 @@ end
 
 local map = {
     ["inserter"] = inserter_with_item_in_hand,
-    ["mining-drill"] = mining_drill_with_resource
+    ["mining-drill"] = mining_drill_with_resource,
+    ["cargo-bay"] = cargo_bay_proxy_to_main_container
 }
 for prototype in pairs(utility.is_belt) do
     map[prototype] = belt_with_items_on_it

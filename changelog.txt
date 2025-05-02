@@ -1,8 +1,18 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.8.9
+Date: 2025-05-02
+  Features:
+    - You can now start following from asteroid collector. Can't follow the arms, sorry!
+    - Focus tracker now knows how to follow modded loaders, lane splitters and linked belts
+    - Focus tracker now chooses proper lane when crafting machine (recycler) directly outputs to belt
+    - Added smoothing when focus changes from crafting machine (recycler) to belt
+  Bugfixes:
+    - Fixed focus tracker picking drill output too early when considering bonus production
+---------------------------------------------------------------------------------------------------
 Version: 0.8.8
 Date: 2025-05-01
   Minor Features:
-    - You can now start following by selecting a cargo pod
+    - You can now start following by selecting a cargo bay
   Bugfixes:
     - Fixed smoothing from cargo pod quickly to inserter being improperly applied
 ---------------------------------------------------------------------------------------------------

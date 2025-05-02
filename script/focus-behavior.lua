@@ -17,7 +17,7 @@ local focus_behavior = {}
 --- @field previous_position MapPosition
 --- @field previous_character? LuaEntity
 --- @field controlling LuaPlayer
---- @field smoothing? FocusSmoothingState If set, smooth_position chases position at a fixed speed instead of directly copying it
+--- @field smoothing? FocusSmoothingState If set, smooth_position chases position at some rate instead of directly copying it
 --- @field watching FocusWatchdog
 --- @field position MapPosition
 --- @field smooth_position MapPosition

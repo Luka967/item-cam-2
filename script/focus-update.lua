@@ -11,6 +11,40 @@ tick_map["item-entity"] = function (focus)
     return true
 end
 
+--- @type table<string, fun(handle: LuaEntity): ((LuaEntity | LuaEntity[])[])>
+local belt_advance_strategy = {
+    ["transport-belt"] = function (handle)
+        return {handle.belt_neighbours.outputs}
+    end,
+    ["splitter"] = function (handle)
+        return {handle, handle.belt_neighbours.outputs}
+    end,
+    ["lane-splitter"] = function (handle)
+        return {handle, handle.belt_neighbours.outputs}
+    end,
+    ["underground-belt"] = function (handle)
+        if handle.belt_to_ground_type == "input" then
+            return {handle, handle.neighbours}
+        else
+            return {handle, handle.belt_neighbours.outputs}
+        end
+    end,
+    ["loader"] = function (handle)
+        if handle.loader_type == "output" then
+            return {handle.belt_neighbours.outputs}
+        else
+            return {handle.loader_container}
+        end
+    end,
+    ["linked-belt"] = function (handle)
+        if handle.linked_belt_type == "output" then
+            return {handle.belt_neighbours.outputs}
+        else
+            return {handle.linked_belt_neighbour}
+        end
+    end
+}
+
 --- @param focus FocusInstance
 --- @param handle LuaEntity
 --- @param pin PinItemOnBelt
@@ -20,45 +54,50 @@ tick_map["item-on-belt"] = function (focus, handle, pin)
     --- @type integer?
     local next_line_idx = pin.line_idx
 
+    --- @param item DetailedItemOnLine
     local seek_fn = function (item)
         return item.unique_id == pin.id
     end
 
     local it = utility.first_on_line(handle.get_transport_line(pin.line_idx), seek_fn)
-
-    -- Passed through splitter or through part of underground
-    if it == nil and handle.type ~= "transport-belt" then
-        it, next_line_idx = utility.first_on_belt(handle, seek_fn)
-    end
-
-    -- Passed to output side of underground
-    if it == nil and handle.type == "underground-belt" and handle.belt_to_ground_type == "input" then
-        it, next_line_idx, next_belt = utility.first_on_belts({handle.neighbours}, seek_fn)
-    end
-
-    -- Passed to next belt
-    if it == nil then
-        it, next_line_idx, next_belt = utility.first_on_belts(handle.belt_neighbours.outputs, seek_fn)
-    end
-
-    -- Taken by inserter, bot, or deconstructed
-    if it == nil then
-        utility.debug("watchdog changing: can't find item on belt with my id")
-        focus.watching = transfer_to.inserter_nearby(
-            handle.surface,
-            handle.force,
-            utility.aabb_around(focus.position, utility.inserter_search_d),
-            focus.position,
-            {item = focus.watching.item}
-        )
+    if it ~= nil then
+        pin.it = it
         return true
     end
 
-    if it == nil or next_line_idx == nil or next_belt == nil
-        then return false end
-    focus.watching.handle = next_belt
-    pin.it = it
-    pin.line_idx = next_line_idx
+    local advance_lookups = belt_advance_strategy[handle.type](handle)
+    for _, lookup_entry in ipairs(advance_lookups) do
+        if type(lookup_entry) == "nil" then
+            -- noop
+        elseif lookup_entry.type == nil then
+            it, next_line_idx, next_belt = utility.first_on_belts(lookup_entry, seek_fn)
+        elseif utility.is_belt[lookup_entry.type] then
+            it, next_line_idx = utility.first_on_belt(lookup_entry, seek_fn)
+            next_belt = lookup_entry
+        else
+            -- Loader -> container
+            focus.watching = transfer_to.next(lookup_entry, focus.watching.item)
+            return true
+        end
+
+        if it ~= nil then
+            assert(next_belt ~= nil, "tick_map item-on-belt advance didn't give next belt entity")
+            assert(next_line_idx ~= nil, "tick_map item-on-belt advance didn't give item line index")
+            pin.it = it
+            pin.line_idx = next_line_idx
+            focus.watching.handle = next_belt
+            return true
+        end
+    end
+
+    utility.debug("watchdog changing: can't find item on belt with my id")
+    focus.watching = transfer_to.inserter_nearby(
+        handle.surface,
+        handle.force,
+        utility.aabb_around(focus.position, utility.inserter_search_d),
+        focus.position,
+        {item = focus.watching.item}
+    )
     return true
 end
 
@@ -169,27 +208,7 @@ tick_map["item-coming-from-mining-drill"] = function (focus, handle, pin)
         return false
     end
 
-    -- Belts have special handling because it can only drop in predetermined locations
-    -- TODO: transfer_to.drop_target should be doing this
-    if not utility.is_belt[drop_target.type] then
-        focus.watching = transfer_to.next(drop_target)
-        return true
-    end
-
-    local drop_line_idx = utility.mining_drill_drop_belt_line_idx[handle.direction][drop_target.direction]
-
-    local best_guess, line_idx = utility.minimum_on_belt(drop_target, function (candidate, line_idx)
-        if line_idx ~= drop_line_idx or not utility.contains(pin.expected_products, candidate.stack.name)
-            then return end
-        return utility.distance(
-            handle.drop_position,
-            drop_target.get_line_item_position(line_idx, candidate.position)
-        )
-    end)
-
-    if best_guess and line_idx then
-        focus.watching = watchdog.create.item_on_belt(best_guess, line_idx, drop_target)
-    end
+    focus.watching = transfer_to.next(drop_target)
     return true
 end
 
@@ -259,8 +278,7 @@ end
 --- @param focus FocusInstance
 --- @param handle LuaEntity
 tick_map["item-in-container-with-cargo-hatches"] = function (focus, handle)
-    -- The actual watchdog switch happens when environment_changed
-
+    -- The actual watchdog switch happens on environment_changed
     return item_in_container(focus, handle)
 end
 
@@ -290,6 +308,13 @@ environment_changed_map["item-in-container-with-cargo-hatches"] = function (focu
     return true
 end
 
+--- @param focus FocusInstance
+--- @param handle LuaEntity
+tick_map["item-coming-from-asteroid-collector"] = function (focus, handle)
+    -- It's basically a container
+    return item_in_container(focus, handle)
+end
+
 --- @class SmoothingDefinition
 --- @field speed? number
 --- @field min_speed? number
@@ -298,13 +323,15 @@ end
 
 --- @type table<string, SmoothingDefinition>
 local map_smooth_speed_in = {
-    ["item-in-inserter-hand"] = {speed = 0.25, ticks = 60},
-    ["item-in-container-with-cargo-hatches"] = {min_speed = 0.1, mul = 0.1, ticks = 120},
-    ["item-in-cargo-pod"] = {min_speed = 0.1, mul = 0.1, ticks = 120}
+    ["item-in-inserter-hand"] = {speed = 0.25, ticks = 60}, -- container -> inserter
+    ["item-on-belt"] = {speed = 0.25, ticks = 60}, -- container -> loader, vector_to_place_result -> belt
+    ["item-in-container-with-cargo-hatches"] = {min_speed = 0.1, mul = 0.1, ticks = 120}, -- cargo pod -> container
+    ["item-in-cargo-pod"] = {min_speed = 0.1, mul = 0.1, ticks = 120} -- container -> cargo pod
 }
 --- @type table<string, SmoothingDefinition>
 local map_smooth_speed_out = {
-    ["item-in-inserter-hand"] = {speed = 0.25, ticks = 60}
+    ["item-in-inserter-hand"] = {speed = 0.25, ticks = 60}, -- inserter -> container
+    ["item-on-belt"] = {speed = 0.25, ticks = 60} -- loader -> container
 }
 
 --- @type FocusSmoothingState
@@ -350,7 +377,7 @@ local function extend_smooth(focus, kind, type)
         and next.min_speed ~= nil
         and new_smoothing.speed > next.min_speed
     then
-        -- If previous has min_speed, but new_smoothing defines speed, that should become next's min_speed
+        -- If previous had min_speed, but new_smoothing defines speed, that should become next's min_speed
         next.min_speed = new_smoothing.speed
     end
 

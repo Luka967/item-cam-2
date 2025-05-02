@@ -18,6 +18,7 @@ If mod errors out while you're following something or it doesn't continue as you
 
 ## Things it can follow right now
 - Belts, splitters, undergrounds, any and all sideload configurations
+- Modded loaders, linked belts, lane splitters
 - Mining drills, assemblers, furnaces (recyclers), etc. with resource/recipe that has some item output
 - Inserters, chests, train cargo wagons
 - Logistic bots picking up and delivering items
@@ -34,4 +35,3 @@ If mod errors out while you're following something or it doesn't continue as you
 - Crafting machines with recipes that have only fluid output
 - Non-SA satellite's Space science pack output
 - Specific item coming out of crafting machine depending on conditions. For example, if you're doing scrap recycling first, idea is to tell Item Cam that you specifically want processing unit to get tracked first.
-- Loaders, linked belts, other modded content interactions as time goes

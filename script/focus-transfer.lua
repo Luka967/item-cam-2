@@ -49,6 +49,48 @@ function transfer_to.inserter_nearby(surface, force, search_area, ref_pos, restr
     end
 end
 
+--- @class WatchLoaderCandidateRestrictions
+--- @field source? LuaEntity
+--- @field target? LuaEntity
+--- @field item? ItemIDAndQualityIDPair
+
+--- @param surface LuaSurface
+--- @param force ForceID
+--- @param search_area BoundingBox
+--- @param restrictions WatchLoaderCandidateRestrictions
+function transfer_to.loader_nearby(surface, force, search_area, restrictions)
+    return utility.first(surface.find_entities_filtered({
+        area = search_area,
+        type = "loader",
+        force = force
+    }), function (candidate)
+        if restrictions.source ~= nil and (
+            candidate.loader_type == "input"
+            or candidate.loader_container ~= restrictions.source
+        ) then return end
+
+        if restrictions.target ~= nil and (
+            candidate.loader_type == "output"
+            or candidate.loader_container ~= restrictions.target
+        ) then return end
+
+        local first_item_on_line, line_idx = utility.minimum_on_belt(candidate, function (item)
+            if restrictions.item ~= nil and (
+                item.stack.name ~= restrictions.item.name
+                or item.stack.quality ~= restrictions.item.quality
+            ) then return end
+
+            return -item.unique_id
+        end)
+
+        if first_item_on_line == nil
+            then return end
+        assert(line_idx ~= nil, "transfer_to.loader_nearby found candidate but line_idx is nil")
+
+        return watchdog.create.item_on_belt(first_item_on_line, line_idx, candidate)
+    end)
+end
+
 --- @class WatchRobotCandidateRestrictions
 --- @field item? ItemIDAndQualityIDPair
 
@@ -145,24 +187,57 @@ function transfer_to.next(entity, item)
     end
 end
 
+--- @class WatchDropTargetRestrictions
+--- @field item? ItemIDAndQualityIDPair
+--- @field expected_products? string[]
+
 --- @param entity LuaEntity
---- @param item? ItemIDAndQualityIDPair
-function transfer_to.drop_target(entity, item)
+--- @param restrictions WatchDropTargetRestrictions
+function transfer_to.drop_target(entity, restrictions)
     if entity.prototype.vector_to_place_result == nil
         then return end
 
-    if entity.drop_target ~= nil then
-        return transfer_to.next(entity.drop_target, item)
+    local drop_target = entity.drop_target
+    if drop_target == nil then
+        local dropped_item_entity = entity.surface.find_entities_filtered({
+            position = entity.drop_position,
+            type = {"item-entity"},
+            force = entity.force
+        })
+        if dropped_item_entity == nil
+            then return end
+        return transfer_to.next(dropped_item_entity, restrictions.item)
     end
 
-    local dropped_item_entity = entity.surface.find_entities_filtered({
-        position = entity.drop_position,
-        type = {"item-entity"},
-        force = entity.force
-    })
-    if dropped_item_entity == nil
+    if drop_target.type ~= "transport-belt" then
+        return transfer_to.next(drop_target, restrictions.item)
+    end
+
+    -- Drop target is belt. Search only the proper lane
+    local drop_line_idx = utility.drop_belt_line_idx[entity.direction][drop_target.direction]
+
+    local best_guess, line_idx = utility.minimum_on_belt(drop_target, function (candidate, line_idx)
+        if line_idx ~= drop_line_idx
+            then return end
+
+        if restrictions.item ~= nil and (
+            candidate.stack.name ~= restrictions.item.name
+            or candidate.stack.quality ~= restrictions.item.quality
+        ) then return end
+        if
+            restrictions.expected_products ~= nil
+            and not utility.contains(restrictions.expected_products, candidate.stack.name)
         then return end
-    return transfer_to.next(dropped_item_entity, item)
+
+        return utility.distance(
+            entity.drop_position,
+            drop_target.get_line_item_position(line_idx, candidate.position)
+        )
+    end)
+
+    if best_guess and line_idx then
+        return watchdog.create.item_on_belt(best_guess, line_idx, drop_target)
+    end
 end
 
 --- @param entity LuaEntity
@@ -170,13 +245,18 @@ end
 --- @param also_drop_target? boolean
 function transfer_to.taken_out_of_building(entity, item, also_drop_target)
     return
-        (also_drop_target and transfer_to.drop_target(entity, item))
+        (also_drop_target and transfer_to.drop_target(entity, {item = item}))
         or transfer_to.inserter_nearby(
             entity.surface,
             entity.force,
             utility.aabb_expand(entity.bounding_box, utility.inserter_search_d),
             entity.position,
             {source = entity, item = item, swinging_towards = true}
+        ) or transfer_to.loader_nearby(
+            entity.surface,
+            entity.force,
+            utility.aabb_expand(entity.bounding_box, utility.inserter_search_d),
+            {source = entity, item = item}
         ) or transfer_to.robot_nearby(
             entity.surface,
             entity.force,

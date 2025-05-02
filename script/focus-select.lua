@@ -76,10 +76,16 @@ local function mining_drill_with_resource(selected)
     return {watchdog.create.item_coming_from_mining_drill(selected)}
 end
 
+--- @param selected LuaEntity
+local function asteroid_collector(selected)
+    return {watchdog.create.item_coming_from_asteroid_collector(selected)}
+end
+
 local map = {
     ["inserter"] = inserter_with_item_in_hand,
     ["mining-drill"] = mining_drill_with_resource,
-    ["cargo-bay"] = cargo_bay_proxy_to_main_container
+    ["cargo-bay"] = cargo_bay_proxy_to_main_container,
+    ["asteroid-collector"] = asteroid_collector
 }
 for prototype in pairs(utility.is_belt) do
     map[prototype] = belt_with_items_on_it

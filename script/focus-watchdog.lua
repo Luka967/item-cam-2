@@ -119,9 +119,10 @@ function create.item_coming_from_mining_drill(entity)
         entity.mining_target.prototype.mineable_properties.mining_time
         / (entity.prototype.mining_speed * (1 + entity.speed_bonus))
 
+    -- This is VERY sensitive in case of drill->container->loader
     local remaining_ticks = math.ceil(math.min(
         mining_speed * (1 - entity.mining_progress),
-        mining_speed * (1 - entity.bonus_mining_progress)
+        mining_speed / entity.force.mining_drill_productivity_bonus * (1 - entity.bonus_mining_progress)
     ) / (1 / 60))
 
     return {
@@ -182,6 +183,15 @@ function create.item_in_container_with_cargo_hatches(entity, item)
     }
 end
 
+--- @param entity LuaEntity
+--- @return FocusWatchdog
+function create.item_coming_from_asteroid_collector(entity)
+    return {
+        type = "item-coming-from-asteroid-collector",
+        handle = entity
+    }
+end
+
 --- @param watchdog FocusWatchdog
 local function just_get_handle_pos(watchdog)
     return watchdog.handle.position
@@ -209,7 +219,8 @@ local get_position = {
     ["item-in-rocket-silo"] = just_get_handle_pos,
     ["item-in-rocket"] = just_get_handle_pos,
     ["item-in-cargo-pod"] = just_get_handle_pos,
-    ["item-in-container-with-cargo-hatches"] = just_get_handle_pos
+    ["item-in-container-with-cargo-hatches"] = just_get_handle_pos,
+    ["item-coming-from-asteroid-collector"] = just_get_handle_pos
 }
 
 --- @param watchdog FocusWatchdog
@@ -227,7 +238,8 @@ local get_surface = {
     ["item-in-rocket-silo"] = just_get_handle_surface,
     ["item-in-rocket"] = just_get_handle_surface,
     ["item-in-cargo-pod"] = just_get_handle_surface,
-    ["item-in-container-with-cargo-hatches"] = just_get_handle_surface
+    ["item-in-container-with-cargo-hatches"] = just_get_handle_surface,
+    ["item-coming-from-asteroid-collector"] = just_get_handle_surface
 }
 
 return {

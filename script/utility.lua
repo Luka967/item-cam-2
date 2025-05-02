@@ -156,7 +156,6 @@ function utility.minimum_of(arr, d_fn)
             local_d = d
         end
     end
-    -- Spammy
     -- utility.debug("minimum_of candidates "..cnt.."/"..#arr)
 
     return local_minimum, local_d
@@ -186,7 +185,7 @@ function utility.minimum_on_belt(belt_entity, d_fn)
             end
         end
     end
-    utility.debug("minimum_on_belt candidates "..cnt.."/"..total)
+    -- utility.debug("minimum_on_belt candidates "..cnt.."/"..total)
 
     return local_minimum, local_line_idx
 end
@@ -277,9 +276,10 @@ end
 
 utility.inserter_search_d = 2
 utility.inserter_search_d_picking_up_feather = 0.08
+utility.loader_search_d = 2
 utility.robot_search_d = 0.5
--- Mining drill direction -> belt piece direction -> target line_idx
-utility.mining_drill_drop_belt_line_idx = {
+-- Building direction -> belt piece direction -> target line_idx
+utility.drop_belt_line_idx = {
     [defines.direction.east] = {
         [defines.direction.north] = 1,
         [defines.direction.south] = 2,
@@ -309,9 +309,12 @@ utility.mining_drill_drop_belt_line_idx = {
 utility.is_belt = {
     ["transport-belt"] = true,
     ["splitter"] = true,
-    ["underground-belt"] = true
+    ["lane-splitter"] = true,
+    ["underground-belt"] = true,
+    ["linked-belt"] = true,
+    ["loader"] = true
 }
-utility.all_belt = {"transport-belt", "splitter", "underground-belt"}
+utility.all_belt = {"transport-belt", "splitter", "lane-splitter", "underground-belt", "linked-belt", "loader"}
 
 utility.is_container = {
     ["container"] = defines.inventory.chest,

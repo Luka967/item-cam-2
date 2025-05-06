@@ -33,3 +33,9 @@ for proto_name in pairs(data.raw["cargo-pod"]) do
         return data.raw["cargo-pod"][proto_name]
     end)
 end
+
+for proto_name in pairs(data.raw["plant"]) do
+    add_script_effect(const.name_trigger_check_cargo_pod_follow, function ()
+        return data.raw["plant"][proto_name]
+    end)
+end

@@ -5,23 +5,23 @@ local utility = require("utility")
 --- @field type_changes_surface? boolean
 --- @field handle LuaEntity
 --- @field pin any
---- @field item? ItemIDAndQualityIDPair
+--- @field item_wl? FocusItemWhitelist Future item lookup whitelist
 
 local create = {}
 
 --- @param entity LuaEntity
 --- @param item ItemIDAndQualityIDPair
---- @return FocusWatchdog
 function create.item_in_container(entity, item)
     if entity.type == "rocket-silo"
         then return create.item_in_rocket_silo(entity, item) end
     if #entity.cargo_hatches > 0
         then return create.item_in_container_with_cargo_hatches(entity, item) end
 
+    --- @type FocusWatchdog
     return {
         type = "item-in-container",
         handle = entity,
-        item = item
+        item_wl = {item = item}
     }
 end
 
@@ -33,15 +33,13 @@ end
 --- @param item_on_line DetailedItemOnLine
 --- @param line_idx integer
 --- @param belt_entity LuaEntity
---- @return FocusWatchdog
 function create.item_on_belt(item_on_line, line_idx, belt_entity)
+    --- @type FocusWatchdog
     return {
         type = "item-on-belt",
         handle = belt_entity,
-        item = {
-            name = item_on_line.stack.name,
-            quality = item_on_line.stack.quality
-        },
+        item_wl = {item = utility.item_stack_proto(item_on_line.stack)},
+        --- @type PinItemOnBelt
         pin = {
             it = item_on_line,
             id = item_on_line.unique_id,
@@ -53,28 +51,28 @@ end
 --- @param entity LuaEntity
 --- @return FocusWatchdog
 function create.item_in_inserter_hand(entity)
-    assert(entity.held_stack.valid_for_read, "watchdog create.item_in_inserter_hand for inserter that has nothing in hand")
+    assert(entity.held_stack.valid_for_read, "inserter has nothing in hand")
 
+    --- @type FocusWatchdog
     return {
         type = "item-in-inserter-hand",
         handle = entity,
-        item = {
-            name = entity.held_stack.name,
-            quality = entity.held_stack.quality
-        }
+        item_wl = {item = utility.item_stack_proto(entity.held_stack)}
     }
 end
 
 --- @class PinItemInCraftingMachine
 --- @field initial_products_finished integer
+--- @field expected_products? string[]
 --- @field announced_change? boolean
 
 --- @param entity LuaEntity
---- @return FocusWatchdog
 function create.item_in_crafting_machine(entity)
+    --- @type FocusWatchdog
     return {
         type = "item-in-crafting-machine",
         handle = entity,
+        --- @type PinItemInCraftingMachine
         pin = {
             initial_products_finished = entity.products_finished
         }
@@ -82,41 +80,37 @@ function create.item_in_crafting_machine(entity)
 end
 
 --- @class PinItemHeldByRobot
---- @field inventory LuaInventory
 --- @field drop_target LuaEntity
 
 --- @param entity LuaEntity
---- @return FocusWatchdog
-function create.item_held_by_robot(entity)
-    local first_item = entity.get_inventory(defines.inventory.robot_cargo)[1]
-    assert(first_item.valid_for_read, "watchdog create.item_held_by_robot for robot that has nothing in robot_cargo")
-
+--- @param item ItemIDAndQualityIDPair
+function create.item_held_by_robot(entity, item)
     local first_order = entity.robot_order_queue[1]
+    local drop_target = first_order.target or first_order.secondary_target
+    assert(drop_target, "robot has no drop target")
+
+    --- @type FocusWatchdog
     return {
         type = "item-held-by-robot",
         handle = entity,
-        item = {
-            name = first_item.name,
-            quality = first_item.quality
-        },
+        item_wl = {item = item},
+        --- @type PinItemHeldByRobot
         pin = {
-            drop_target = first_order.target or first_order.secondary_target
+            drop_target = drop_target
         }
     }
 end
 
 --- @class PinItemComingFromMiningDrill
---- @field last_mining_target? LuaEntity
---- @field expected_products? string[]
 --- @field tick_should_mine integer
 
 --- @param entity LuaEntity
---- @return FocusWatchdog
 function create.item_coming_from_mining_drill(entity)
-    assert(entity.mining_target ~= nil, "watchdog create.item_coming_from_mining_drill for drill that has no mining_target")
+    local mining_target = entity.mining_target
+    assert(mining_target, "drill has no mining_target")
 
     local mining_speed =
-        entity.mining_target.prototype.mineable_properties.mining_time
+        mining_target.prototype.mineable_properties.mining_time
         / (entity.prototype.mining_speed * (1 + entity.speed_bonus))
 
     -- This is VERY sensitive in case of drill->container->loader
@@ -125,9 +119,17 @@ function create.item_coming_from_mining_drill(entity)
         mining_speed / entity.force.mining_drill_productivity_bonus * (1 - entity.bonus_mining_progress)
     ) / (1 / 60))
 
+    local mining_products = mining_target.prototype.mineable_properties.products
+    assert(mining_products, "mining target has no products")
+
+    --- @type FocusWatchdog
     return {
         type = "item-coming-from-mining-drill",
         handle = entity,
+        item_wl = {
+            items = utility.products_filtered(mining_products, {items = true})
+        },
+        --- @type PinItemComingFromMiningDrill
         pin = {
             tick_should_mine = game.tick + remaining_ticks
         }
@@ -136,23 +138,23 @@ end
 
 --- @param entity LuaEntity
 --- @param item ItemIDAndQualityIDPair
---- @return FocusWatchdog
 function create.item_in_rocket_silo(entity, item)
+    --- @type FocusWatchdog
     return {
         type = "item-in-rocket-silo",
         handle = entity,
-        item = item
+        item_wl = {item = item}
     }
 end
 
 --- @param entity LuaEntity
 --- @param item ItemIDAndQualityIDPair
---- @return FocusWatchdog
 function create.item_in_rocket(entity, item)
+    --- @type FocusWatchdog
     return {
         type = "item-in-rocket",
         handle = entity,
-        item = item
+        item_wl = {item = item}
     }
 end
 
@@ -161,34 +163,76 @@ end
 
 --- @param entity LuaEntity
 --- @param item ItemIDAndQualityIDPair
---- @return FocusWatchdog
 function create.item_in_cargo_pod(entity, item)
+    --- @type FocusWatchdog
     return {
         type = "item-in-cargo-pod",
         type_changes_surface = true,
         handle = entity,
-        item = item,
+        item_wl = {item = item},
+        --- @type PinItemInCargoPod
         pin = {}
     }
 end
 
 --- @param entity LuaEntity
 --- @param item ItemIDAndQualityIDPair
---- @return FocusWatchdog
 function create.item_in_container_with_cargo_hatches(entity, item)
+    --- @type FocusWatchdog
     return {
         type = "item-in-container-with-cargo-hatches",
         handle = entity,
-        item = item
+        item_wl = {item = item}
     }
 end
 
 --- @param entity LuaEntity
 --- @return FocusWatchdog
 function create.item_coming_from_asteroid_collector(entity)
+    --- @type FocusWatchdog
     return {
         type = "item-coming-from-asteroid-collector",
-        handle = entity
+        handle = entity,
+        item_wl = utility.__no_wl
+    }
+end
+
+--- @param entity LuaEntity
+--- @param item ItemIDAndQualityIDPair
+--- @return FocusWatchdog
+function create.seed_in_agricultural_tower(entity, item)
+    --- @type FocusWatchdog
+    return {
+        type = "seed-in-agricultural-tower",
+        handle = entity,
+        item_wl = {item = item}
+    }
+end
+
+--- @param entity LuaEntity
+--- @return FocusWatchdog
+function create.plant_growing(entity)
+    local mine_products = entity.prototype.mineable_properties.products
+    assert(mine_products, "plant has no products")
+
+    --- @type FocusWatchdog
+    return {
+        type = "plant-growing",
+        handle = entity,
+        item_wl = {
+            items = utility.products_filtered(mine_products, {items = true})
+        }
+    }
+end
+
+--- @param entity LuaEntity
+--- @return FocusWatchdog
+function create.item_coming_from_agricultural_tower(entity)
+    --- @type FocusWatchdog
+    return {
+        type = "item-coming-from-agricultural-tower",
+        handle = entity,
+        item_wl = utility.__no_wl
     }
 end
 
@@ -220,7 +264,10 @@ local get_position = {
     ["item-in-rocket"] = just_get_handle_pos,
     ["item-in-cargo-pod"] = just_get_handle_pos,
     ["item-in-container-with-cargo-hatches"] = just_get_handle_pos,
-    ["item-coming-from-asteroid-collector"] = just_get_handle_pos
+    ["item-coming-from-asteroid-collector"] = just_get_handle_pos,
+    ["seed-in-agricultural-tower"] = just_get_handle_pos,
+    ["plant-growing"] = just_get_handle_selection_box,
+    ["item-coming-from-agricultural-tower"] = just_get_handle_pos
 }
 
 --- @param watchdog FocusWatchdog
@@ -239,7 +286,10 @@ local get_surface = {
     ["item-in-rocket"] = just_get_handle_surface,
     ["item-in-cargo-pod"] = just_get_handle_surface,
     ["item-in-container-with-cargo-hatches"] = just_get_handle_surface,
-    ["item-coming-from-asteroid-collector"] = just_get_handle_surface
+    ["item-coming-from-asteroid-collector"] = just_get_handle_surface,
+    ["seed-in-agricultural-tower"] = just_get_handle_surface,
+    ["plant-growing"] = just_get_handle_surface,
+    ["item-coming-from-agricultural-tower"] = just_get_handle_surface
 }
 
 return {

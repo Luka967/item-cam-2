@@ -7,37 +7,39 @@ local transfer_to = {}
 --- @class WatchInserterCandidateRestrictions
 --- @field source? LuaEntity
 --- @field target? LuaEntity
---- @field item? ItemIDAndQualityIDPair
 --- @field swinging_towards? boolean
 
 --- @param surface LuaSurface
 --- @param force ForceID
 --- @param search_area BoundingBox
 --- @param ref_pos MapPosition
+--- @param item_wl FocusItemWhitelist
 --- @param restrictions WatchInserterCandidateRestrictions
-function transfer_to.inserter_nearby(surface, force, search_area, ref_pos, restrictions)
+function transfer_to.inserter_nearby(surface, force, search_area, ref_pos, item_wl, restrictions)
+    utility.debug_area(surface, search_area, utility.__dc_inserter_seek)
+
     local best_guess = utility.minimum_of(surface.find_entities_filtered({
         area = search_area,
         type = "inserter",
-        force = force
+        force = force,
     }), function (candidate)
+        utility.debug_pos(surface, candidate.position, utility.__dc_min_cand)
+
         local held_stack = candidate.held_stack
         if not held_stack.valid_for_read
             then return end
-        if restrictions.item ~= nil and (
-            held_stack.name ~= restrictions.item.name
-            or held_stack.quality ~= restrictions.item.quality
-        ) then return end
+        if not utility.is_item_filtered(held_stack, item_wl)
+            then return end
         if restrictions.source ~= nil and candidate.pickup_target ~= restrictions.source
             then return end
         if restrictions.target ~= nil and candidate.drop_target ~= restrictions.target
             then return end
 
         if not restrictions.swinging_towards then
-            return utility.distance(ref_pos, candidate.held_stack_position)
+            return utility.sq_distance(ref_pos, candidate.held_stack_position)
         end
 
-        local d_hand_to_pickup = utility.distance(candidate.held_stack_position, candidate.pickup_position)
+        local d_hand_to_pickup = utility.sq_distance(candidate.held_stack_position, candidate.pickup_position)
         if d_hand_to_pickup > utility.inserter_search_d_picking_up_feather
             then return end
 
@@ -45,20 +47,48 @@ function transfer_to.inserter_nearby(surface, force, search_area, ref_pos, restr
     end)
 
     if best_guess ~= nil then
+        utility.debug_pos(surface, best_guess.position, utility.__dc_min_pick)
         return watchdog.create.item_in_inserter_hand(best_guess)
+    end
+end
+
+--- @param target_belt_entity LuaEntity
+--- @param item_wl FocusItemWhitelist
+function transfer_to.newest_item_on_belt(target_belt_entity, item_wl)
+    local best_guess, line_idx = utility.minimum_on_belt(target_belt_entity, function (candidate, line_idx)
+        utility.debug_pos(
+            target_belt_entity.surface,
+            target_belt_entity.get_line_item_position(line_idx, candidate.position),
+            utility.__dc_min_cand
+        )
+        if not utility.is_item_filtered(candidate.stack, item_wl)
+            then return end
+
+        return -candidate.unique_id -- Pick newest
+    end)
+
+    if best_guess and line_idx then
+        utility.debug_pos(
+            target_belt_entity.surface,
+            target_belt_entity.get_line_item_position(line_idx, best_guess.position),
+            utility.__dc_min_pick
+        )
+        return watchdog.create.item_on_belt(best_guess, line_idx, target_belt_entity)
     end
 end
 
 --- @class WatchLoaderCandidateRestrictions
 --- @field source? LuaEntity
 --- @field target? LuaEntity
---- @field item? ItemIDAndQualityIDPair
 
 --- @param surface LuaSurface
 --- @param force ForceID
 --- @param search_area BoundingBox
+--- @param item_wl FocusItemWhitelist
 --- @param restrictions WatchLoaderCandidateRestrictions
-function transfer_to.loader_nearby(surface, force, search_area, restrictions)
+function transfer_to.loader_nearby(surface, force, search_area, item_wl, restrictions)
+    utility.debug_area(surface, search_area, utility.__dc_loader_seek)
+
     return utility.first(surface.find_entities_filtered({
         area = search_area,
         type = "loader",
@@ -74,106 +104,79 @@ function transfer_to.loader_nearby(surface, force, search_area, restrictions)
             or candidate.loader_container ~= restrictions.target
         ) then return end
 
-        local first_item_on_line, line_idx = utility.minimum_on_belt(candidate, function (item)
-            if restrictions.item ~= nil and (
-                item.stack.name ~= restrictions.item.name
-                or item.stack.quality ~= restrictions.item.quality
-            ) then return end
-
-            return -item.unique_id
-        end)
-
-        if first_item_on_line == nil
-            then return end
-        assert(line_idx ~= nil, "transfer_to.loader_nearby found candidate but line_idx is nil")
-
-        return watchdog.create.item_on_belt(first_item_on_line, line_idx, candidate)
+        return transfer_to.newest_item_on_belt(candidate, item_wl)
     end)
 end
-
---- @class WatchRobotCandidateRestrictions
---- @field item? ItemIDAndQualityIDPair
 
 --- @param surface LuaSurface
 --- @param force ForceID
 --- @param search_area BoundingBox
 --- @param ref_pos MapPosition
---- @param restrictions WatchRobotCandidateRestrictions
-function transfer_to.robot_nearby(surface, force, search_area, ref_pos, restrictions)
-    local best_guess = utility.minimum_of(surface.find_entities_filtered({
+--- @param item_wl FocusItemWhitelist
+function transfer_to.robot_nearby(surface, force, search_area, ref_pos, item_wl)
+    utility.debug_area(surface, search_area, utility.__dc_robot_seek)
+
+    local best_guess, its_item_stack = utility.minimum_of(surface.find_entities_filtered({
         area = search_area,
         type = utility.all_bot,
         force = force
     }), function (candidate)
+        utility.debug_pos(surface, candidate.position, utility.__dc_min_cand)
+
         -- It would have been nicer to check for a pickup order.
         -- But because they actually update only every 20 ticks, we'd need a giant surface area scanned every tick
         -- just so that we catch the bot before it updates when order target (ref_pos) is reached.
         -- And here we do these checks *after* they update, so the pickup order is gone
         local inventory = candidate.get_inventory(defines.inventory.robot_cargo)
-        assert(inventory ~= nil, "transfer_to.robot_nearby doesn't have targeted inventory")
+        assert(inventory, "candidate robot doesn't have targeted inventory")
 
-        local first_stack = utility.first_readable_item_stack(inventory)
-        if not first_stack
+        local first_stack = utility.first_item_stack_filtered(inventory, item_wl)
+        if first_stack == nil
+            then return end
+        if not utility.is_item_filtered(first_stack, item_wl)
             then return end
 
-        if restrictions.item ~= nil and (
-            first_stack.name ~= restrictions.item.name
-            or first_stack.quality ~= restrictions.item.quality
-        ) then return end
-
-        return utility.distance(ref_pos, candidate.position)
+        return utility.sq_distance(ref_pos, candidate.position), first_stack
     end)
 
     if best_guess ~= nil then
-        return watchdog.create.item_held_by_robot(best_guess)
-    end
-end
+        assert(its_item_stack)
+        utility.debug_pos(surface, best_guess.position, utility.__dc_min_pick)
 
---- @class WatchItemOnBeltCandidateRestrictions
---- @field item? ItemIDAndQualityIDPair
-
---- @param target_belt_entity LuaEntity
---- @param restrictions WatchItemOnBeltCandidateRestrictions
-function transfer_to.newest_item_on_belt(target_belt_entity, restrictions)
-    local best_guess, line_idx = utility.minimum_on_belt(target_belt_entity, function (candidate)
-        if restrictions.item ~= nil and (
-            candidate.stack.name ~= restrictions.item.name
-            or candidate.stack.quality ~= restrictions.item.quality
-        ) then return end
-
-        return -candidate.unique_id -- Pick newest
-    end)
-
-    if best_guess and line_idx then
-        return watchdog.create.item_on_belt(best_guess, line_idx, target_belt_entity)
+        return watchdog.create.item_held_by_robot(
+            best_guess,
+            utility.item_stack_proto(its_item_stack)
+        )
     end
 end
 
 --- @param entity LuaEntity
---- @param item? ItemIDAndQualityIDPair
-function transfer_to.next(entity, item)
+--- @param item_wl FocusItemWhitelist
+function transfer_to.next(entity, item_wl)
     local entity_type = entity.type
     if utility.is_belt[entity_type] then
-        return transfer_to.newest_item_on_belt(
-            entity,
-            {item = item}
-        )
+        return transfer_to.newest_item_on_belt(entity, item_wl)
     end
     if entity_type == "inserter" then
         return watchdog.create.item_in_inserter_hand(entity)
     end
+    if entity_type == "agricultural-tower" then
+        -- Happens only when it's inputted into. Output is triggered independently
+        assert(item_wl.item, "expected whitelist on item")
+        return watchdog.create.seed_in_agricultural_tower(entity, item_wl.item)
+    end
     if utility.is_crafting_machine[entity_type] then
         return watchdog.create.item_in_crafting_machine(entity)
     end
-    if utility.is_container[entity_type] then
-        assert(item ~= nil, "transfer_to.next to container expected item in focus")
-        --- Transfer to pickup inserter can happen in same tick.
-        --- If it did we'd see 0 count in inventory
-        local inventory = entity.get_inventory(utility.is_container[entity_type])
-        assert(inventory ~= nil, "transfer_to.next to container doesn't have targeted inventory")
+    if utility.container_inventory_idx[entity_type] then
+        assert(item_wl.item or item_wl.items, "expected whitelist on item")
 
-        if inventory.get_item_count(item) > 0 then
-            return watchdog.create.item_in_container(entity, item)
+        local inventory = entity.get_inventory(utility.container_inventory_idx[entity_type])
+        assert(inventory, "expected entity to have its specific inventory")
+
+        local first_applicable_stack = utility.first_item_stack_filtered(inventory, item_wl)
+        if first_applicable_stack ~= nil then
+            return watchdog.create.item_in_container(entity, utility.item_stack_proto(first_applicable_stack))
         end
 
         utility.debug("transfer_to.next: item from container was already taken by inserter")
@@ -182,23 +185,22 @@ function transfer_to.next(entity, item)
             entity.force,
             utility.aabb_expand(entity.bounding_box, utility.inserter_search_d),
             entity.position,
-            {item = item, source = entity}
+            item_wl,
+            {source = entity, swinging_towards = true}
         )
     end
 end
 
---- @class WatchDropTargetRestrictions
---- @field item? ItemIDAndQualityIDPair
---- @field expected_products? string[]
-
 --- @param entity LuaEntity
---- @param restrictions WatchDropTargetRestrictions
-function transfer_to.drop_target(entity, restrictions)
+--- @param item_wl FocusItemWhitelist
+function transfer_to.drop_target(entity, item_wl)
     if entity.prototype.vector_to_place_result == nil
         then return end
 
     local drop_target = entity.drop_target
     if drop_target == nil then
+        utility.debug_pos(entity.surface, entity.drop_position, utility.__dc_item_entity_seek)
+
         local dropped_item_entity = entity.surface.find_entities_filtered({
             position = entity.drop_position,
             type = {"item-entity"},
@@ -206,11 +208,11 @@ function transfer_to.drop_target(entity, restrictions)
         })
         if dropped_item_entity == nil
             then return end
-        return transfer_to.next(dropped_item_entity, restrictions.item)
+        return transfer_to.next(dropped_item_entity, item_wl)
     end
 
     if drop_target.type ~= "transport-belt" then
-        return transfer_to.next(drop_target, restrictions.item)
+        return transfer_to.next(drop_target, item_wl)
     end
 
     -- Drop target is belt. Search only the proper lane
@@ -219,17 +221,10 @@ function transfer_to.drop_target(entity, restrictions)
     local best_guess, line_idx = utility.minimum_on_belt(drop_target, function (candidate, line_idx)
         if line_idx ~= drop_line_idx
             then return end
+        if not utility.is_item_filtered(candidate.stack, item_wl)
+            then return end
 
-        if restrictions.item ~= nil and (
-            candidate.stack.name ~= restrictions.item.name
-            or candidate.stack.quality ~= restrictions.item.quality
-        ) then return end
-        if
-            restrictions.expected_products ~= nil
-            and not utility.contains(restrictions.expected_products, candidate.stack.name)
-        then return end
-
-        return utility.distance(
+        return utility.sq_distance(
             entity.drop_position,
             drop_target.get_line_item_position(line_idx, candidate.position)
         )
@@ -241,28 +236,34 @@ function transfer_to.drop_target(entity, restrictions)
 end
 
 --- @param entity LuaEntity
---- @param item? ItemIDAndQualityIDPair
+--- @param item_wl FocusItemWhitelist
 --- @param also_drop_target? boolean
-function transfer_to.taken_out_of_building(entity, item, also_drop_target)
+function transfer_to.taken_out_of_building(entity, item_wl, also_drop_target)
+    utility.debug_area(entity.surface, entity.selection_box, utility.__dc_bounding)
+    local entity_box = utility.adjusted_selection_box(entity)
+    utility.debug_area(entity.surface, entity_box, utility.__dc_bounding_real)
+
     return
-        (also_drop_target and transfer_to.drop_target(entity, {item = item}))
+        (also_drop_target and transfer_to.drop_target(entity, item_wl))
         or transfer_to.inserter_nearby(
             entity.surface,
             entity.force,
-            utility.aabb_expand(entity.bounding_box, utility.inserter_search_d),
+            utility.aabb_expand(entity_box, utility.inserter_search_d),
             entity.position,
-            {source = entity, item = item, swinging_towards = true}
+            item_wl,
+            {source = entity, swinging_towards = true}
         ) or transfer_to.loader_nearby(
             entity.surface,
             entity.force,
-            utility.aabb_expand(entity.bounding_box, utility.inserter_search_d),
-            {source = entity, item = item}
+            utility.aabb_expand(entity_box, utility.loader_search_d),
+            item_wl,
+            {source = entity}
         ) or transfer_to.robot_nearby(
             entity.surface,
             entity.force,
-            utility.aabb_expand(entity.bounding_box, utility.robot_search_d),
+            utility.aabb_expand(entity_box, utility.robot_search_d),
             entity.position,
-            {item = item}
+            item_wl
         )
 end
 
@@ -277,14 +278,14 @@ function transfer_to.bay_associate_owner(target)
     end
 
     local landing_pads_here = state.landing_pads.all_on(target.surface_index)
-    assert(landing_pads_here ~= nil, "transfer_to.bay_associate_owner retrieved no landing pads for a surface that apparently has one")
+    assert(landing_pads_here, "retrieved no landing pads for a surface that apparently has one")
 
     for _, candidate in pairs(landing_pads_here) do
         if utility.contains(candidate.get_cargo_bays(), target) then
             return candidate
         end
     end
-    assert(false, "transfer_to.bay_associate_owner couldn't backwards match cargo bay to its landing pad because it's not remembered")
+    assert(false, "couldn't backwards match cargo bay to its landing pad because it's not remembered")
 end
 
 return transfer_to

@@ -1,4 +1,20 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.8.10
+Date: 2025-05-05
+  Features:
+    - You can now start following by clicking a yumako / jellynut plant
+    - You can now start following from the output of an agricultural tower
+    - Seed in tower turned plant will now be tracked growing
+  Optimizations:
+    - Focus switching won't be checked for if currently watching rolling stock of a moving train
+  Changes:
+    - Smoothing now stops when camera center reaches tracked target
+  Bugfixes:
+    - Fixed crash when mining drill is directly outputting into container / cargo wagon
+    - Fixed crash when whatever is being tracked gets destroyed
+    - Fixed focus loss when item on outer lane of belt gets taken by long inserter 2 tiles away
+    - Fixed focus loss when item in cargo wagon gets taken by long inserter 2 tiles away
+---------------------------------------------------------------------------------------------------
 Version: 0.8.9
 Date: 2025-05-02
   Features:

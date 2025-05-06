@@ -139,7 +139,12 @@ end
 --- @param focus FocusInstance
 local function update_smooth_position(focus)
     local smoothing = focus.smoothing
-    if not smoothing or game.tick >= smoothing.final_tick then
+    local real_d = math.sqrt(utility.sq_distance(focus.smooth_position, focus.position))
+    if
+        not smoothing
+        or game.tick >= smoothing.final_tick
+        or real_d < utility.smooth_end_feather
+    then
         focus.smoothing = nil
         focus.smooth_position.x = focus.position.x
         focus.smooth_position.y = focus.position.y
@@ -147,9 +152,7 @@ local function update_smooth_position(focus)
     end
 
     local angle = utility.vec_angle(focus.smooth_position, focus.position)
-    local real_d = math.sqrt(utility.distance(focus.smooth_position, focus.position))
-    local d = real_d
-    d = d * (smoothing.mul or 1)
+    local d = real_d * (smoothing.mul or 1)
     d = math.min(focus.smoothing.speed or d, d)
     d = math.max(focus.smoothing.min_speed or 0, d)
     d = math.min(d, real_d)

@@ -22,7 +22,7 @@ If mod errors out while you're following something or it doesn't continue as you
 - Mining drills, assemblers, furnaces (recyclers), etc. with resource/recipe that has some item output
 - Inserters, chests, train cargo wagons
 - Logistic bots picking up and delivering items
-- Space Age content: rockets with cargo, space platform hubs and their pods
+- Space Age content: plants, rockets with cargo, space platform hubs and their pods
 
 ## Limitations
 - You can't watch the cargo pod processions. API limitation. Sorry!

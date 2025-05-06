@@ -6,51 +6,82 @@ function utility.debug(...)
     print(game.tick, ...)
 end
 
---- @param src Vector
---- @param dst Vector
---- @param p number
---- @return Vector
-function utility.lerp(src, dst, p)
-    return {
-        x = src.x + (dst.x - src.x) * p,
-        y = src.y + (dst.y - src.y) * p,
-    }
+utility.__d_ttl = 30
+utility.__dc_bounding = {255, 0, 0}
+utility.__dc_bounding_real = {0, 0, 255}
+utility.__dc_inserter_seek = {255, 255, 0}
+utility.__dc_loader_seek = {0, 255, 0}
+utility.__dc_robot_seek = {0, 255, 255}
+utility.__dc_item_entity_seek = {0, 255, 255}
+
+utility.__dc_robot_pos = {255, 0, 0}
+utility.__dc_min_cand = {255, 0, 0}
+utility.__dc_min_pick = {0, 255, 0}
+
+--- @param surface LuaSurface
+--- @param position MapPosition
+--- @param color Color.0
+function utility.debug_pos(surface, position, color)
+    if not settings.global["debug-tracker"].value
+        then return end
+    rendering.draw_circle({
+        surface = surface,
+        color = color,
+        width = 1,
+        target = position,
+        radius = 0.25,
+        time_to_live = utility.__d_ttl
+    })
+end
+--- @param surface LuaSurface
+--- @param area BoundingBox
+--- @param color Color.0
+function utility.debug_area(surface, area, color)
+    if not settings.global["debug-tracker"].value
+        then return end
+    rendering.draw_rectangle({
+        surface = surface,
+        color = color,
+        width = 1,
+        left_top = area.left_top,
+        right_bottom = area.right_bottom,
+        time_to_live = utility.__d_ttl
+    })
 end
 
 --- @param a Vector
 --- @param b Vector
---- @return Vector
-function utility.vec_add(a, b)
-    return {
-        x = a.x + b.x,
-        y = a.y + b.y
-    }
-end
-
---- @param a Vector
---- @param b Vector
---- @return Vector
-function utility.vec_sub(a, b)
-    return {
-        x = a.x - b.x,
-        y = a.y - b.y
-    }
+function utility.sq_distance(a, b)
+    return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)
 end
 
 --- @param src MapPosition
 --- @param dst MapPosition
---- @return Vector
 function utility.vec_angle(src, dst)
     local angle = math.atan2(dst.x - src.x, dst.y - src.y)
+    --- @type Vector
     return {
         x = math.sin(angle),
         y = math.cos(angle)
     }
 end
 
+--- @param p MapPosition
+--- @param c MapPosition
+--- @param rad number
+function utility.vec_rotate_around_cw(p, c, rad)
+    local dx = p.x - c.x
+    local dy = p.y - c.y
+    --- @type MapPosition
+    return {
+        x = c.x + dx * math.cos(rad) - dy * math.sin(rad),
+        y = c.y + dx * math.sin(rad) + dy * math.cos(rad)
+    }
+end
+
 --- @param aabb BoundingBox
---- @return Vector
 function utility.aabb_center(aabb)
+    --- @type Vector
     return {
         x = (aabb.right_bottom.x + aabb.left_top.x) / 2,
         y = (aabb.right_bottom.y + aabb.left_top.y) / 2
@@ -60,24 +91,58 @@ end
 --- @param position MapPosition
 --- @param w number
 --- @param h? number
---- @return BoundingBox
 function utility.aabb_around(position, w, h)
     h = h or w
+    --- @type BoundingBox
     return {
-        right_top = {x = position.x - w, y = position.y - h},
-        left_bottom = {x = position.x + w, y = position.y + h}
+        left_top = {x = position.x - w, y = position.y - h},
+        right_bottom = {x = position.x + w, y = position.y + h}
     }
 end
 
 --- @param aabb BoundingBox
 --- @param w number
 --- @param h? number
---- @return BoundingBox
 function utility.aabb_expand(aabb, w, h)
     h = h or w
+    --- @type BoundingBox
     return {
-        right_top = {x = aabb.left_top.x - w, y = aabb.left_top.y - h},
-        left_bottom = {x = aabb.right_bottom.x + w, y = aabb.right_bottom.y + h}
+        left_top = {x = aabb.left_top.x - w, y = aabb.left_top.y - h},
+        right_bottom = {x = aabb.right_bottom.x + w, y = aabb.right_bottom.y + h}
+    }
+end
+
+local has_non_adjusted_selection_box = {
+    ["car"] = true,
+    ["cargo-wagon"] = true,
+    ["fluid-wagon"] = true
+}
+--- @param entity LuaEntity
+function utility.adjusted_selection_box(entity)
+    if not has_non_adjusted_selection_box[entity.type] then
+        return entity.selection_box
+    end
+
+    local selection_box = entity.selection_box
+    local center = utility.aabb_center(selection_box)
+    local hw = selection_box.left_top.x - center.x
+    local hh = selection_box.left_top.y - center.y
+    local angle_rad = (selection_box.orientation or 0) * 2 * math.pi
+
+    local tl_rot = utility.vec_rotate_around_cw({x = center.x - hw, y = center.y - hh}, center, angle_rad)
+    local tr_rot = utility.vec_rotate_around_cw({x = center.x + hw, y = center.y - hh}, center, angle_rad)
+    local bl_rot = utility.vec_rotate_around_cw({x = center.x - hw, y = center.y + hh}, center, angle_rad)
+    local br_rot = utility.vec_rotate_around_cw({x = center.x + hw, y = center.y + hh}, center, angle_rad)
+
+    local tl_x = math.min(tl_rot.x, tr_rot.x, bl_rot.x, br_rot.x)
+    local tl_y = math.min(tl_rot.y, tr_rot.y, bl_rot.y, br_rot.y)
+    local br_x = math.max(tl_rot.x, tr_rot.x, bl_rot.x, br_rot.x)
+    local br_y = math.max(tl_rot.y, tr_rot.y, bl_rot.y, br_rot.y)
+
+    --- @type BoundingBox
+    return {
+        left_top = {x = tl_x, y = tl_y},
+        right_bottom = {x = br_x, y = br_y}
     }
 end
 
@@ -137,28 +202,30 @@ function utility.contains(arr, target)
     return false
 end
 
---- @generic T
+--- @generic T, U
 --- @param arr T[]
---- @param d_fn fun(entry: T): number?
---- @return T?, number?
+--- @param d_fn fun(entry: T): number?, U?
+--- @return T?, U?
 function utility.minimum_of(arr, d_fn)
     if arr == nil
         then return end
     local local_minimum
     local local_d
+    local tag
 
     local cnt = 0
     for _, entry in ipairs(arr) do
-        local d = d_fn(entry)
+        local d, new_tag = d_fn(entry)
         if d ~= nil then cnt = cnt + 1 end
         if d ~= nil and (local_d == nil or d < local_d) then
             local_minimum = entry
             local_d = d
+            tag = new_tag
         end
     end
     -- utility.debug("minimum_of candidates "..cnt.."/"..#arr)
 
-    return local_minimum, local_d
+    return local_minimum, tag
 end
 
 --- @param belt_entity LuaEntity
@@ -224,47 +291,69 @@ function utility.first_on_belts(arr, fn)
     end
 end
 
+--- @class FocusItemWhitelist
+--- @field item? ItemIDAndQualityIDPair
+--- @field items? string[]
+--- @field qualities? string[]
+
+utility.__no_wl = {}
+
+--- @param item ItemWithQualityID
+--- @param wl FocusItemWhitelist
+function utility.is_item_filtered(item, wl)
+    if wl.item ~= nil and (
+        item.name ~= wl.item.name
+        or item.quality ~= wl.item.quality
+    ) then return false end
+
+    if wl.items ~= nil and not utility.contains(wl.items, item.name)
+        then return false end
+    if wl.qualities ~= nil and not utility.contains(wl.qualities, item.quality.name)
+        then return false end
+
+    return true
+end
+
 --- @param inventory LuaInventory
+--- @param item_wl FocusItemWhitelist
 --- @return LuaItemStack?
-function utility.first_readable_item_stack(inventory)
+function utility.first_item_stack_filtered(inventory, item_wl)
     if inventory == nil
         then return end
     for idx = 1, #inventory do
         local stack = inventory[idx]
-        if stack.valid_for_read and stack.count > 0 then
+        if
+            stack.valid_for_read
+            and stack.count > 0
+            and utility.is_item_filtered(stack, item_wl)
+        then
             return inventory[idx]
         end
     end
 end
 
---- @param a Vector
---- @param b Vector
-function utility.distance(a, b)
-    return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)
+--- @param item ItemWithQualityID
+function utility.item_stack_proto(item)
+    --- @type ItemIDAndQualityIDPair
+    return {
+        name = item.name,
+        quality = item.quality
+    }
 end
 
---- @class UtilityMinableProductsArgs
---- @field source LuaEntity
+--- @class UtilityProductsOptions
 --- @field items? boolean
 --- @field fluids? boolean
 
---- @param arg UtilityMinableProductsArgs
+--- @param products (ItemProduct|FluidProduct|ResearchProgressProduct)[]
+--- @param wl UtilityProductsOptions
 --- @return string[]?
-function utility.mining_products(arg)
-    if not arg.source.minable
-        then return end
-
-    local prototype = arg.source.prototype
-    if prototype.type ~= "resource"
-        then return end
-    if #prototype.mineable_properties.products == 0
-        then return end
-
+function utility.products_filtered(products, wl)
     local results = {}
-    for _, entry in ipairs(prototype.mineable_properties.products) do
+    for _, entry in ipairs(products) do
         if
-            (arg.items and entry.type == "item")
-            or (arg.fluids and entry.type == "fluid")
+            (wl.items and entry.type == "item")
+            or (wl.fluids and entry.type == "fluid")
         then
             table.insert(results, entry.name)
         end
@@ -274,10 +363,14 @@ function utility.mining_products(arg)
     return results
 end
 
-utility.inserter_search_d = 2
+utility.inserter_search_d = 2.2
 utility.inserter_search_d_picking_up_feather = 0.08
-utility.loader_search_d = 2
-utility.robot_search_d = 0.5
+utility.loader_search_d = 1.5
+utility.robot_search_d = 0
+utility.agricultural_tower_search_tiles = 3
+utility.agricultural_tower_search_d = 12
+utility.smooth_end_feather = 0.1
+
 -- Building direction -> belt piece direction -> target line_idx
 utility.drop_belt_line_idx = {
     [defines.direction.east] = {
@@ -316,7 +409,12 @@ utility.is_belt = {
 }
 utility.all_belt = {"transport-belt", "splitter", "lane-splitter", "underground-belt", "linked-belt", "loader"}
 
-utility.is_container = {
+utility.missing_inventory_defines = {
+    agricultural_tower_input = 2,
+    agricultural_tower_output = 3
+}
+
+utility.container_inventory_idx = {
     ["container"] = defines.inventory.chest,
     ["logistic-container"] = defines.inventory.chest,
     ["infinity-container"] = defines.inventory.chest,
@@ -341,7 +439,6 @@ utility.is_crafting_machine = {
 utility.all_suitable_robot_order = {
     [defines.robot_order_type.deliver] = true,
     [defines.robot_order_type.deliver_items] = true,
-    [defines.robot_order_type.repair] = true,
     [defines.robot_order_type.pickup] = true,
     [defines.robot_order_type.pickup_items] = true
 }

@@ -12,11 +12,13 @@ map_trigger_effects[const.name_trigger_remember_landing_pad] = function (event)
 end
 
 --- @param event EventData.on_script_trigger_effect
-map_trigger_effects[const.name_trigger_check_cargo_pod_follow] = function (event)
-    -- When created both cargo_pod_origin and cargo_pod_destination read nil.
-    -- Defer calling environment_changed to next tick when the cargo pod sees where it is and not where it isn't
+local function check_environment_changed_next_tick(event)
     table.insert(state.env_changed_next_tick, event.cause_entity)
 end
+-- When created both cargo_pod_origin and cargo_pod_destination read nil.
+-- Defer calling environment_changed to next tick when the cargo pod sees where it is and not where it isn't
+map_trigger_effects[const.name_trigger_check_cargo_pod_follow] = check_environment_changed_next_tick
+map_trigger_effects[const.name_trigger_check_plant_follow] = check_environment_changed_next_tick
 
 local function first_surface()
     for _, surface in pairs(game.surfaces) do

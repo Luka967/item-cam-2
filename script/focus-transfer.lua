@@ -4,13 +4,34 @@ local watchdog = require("focus-watchdog")
 
 local transfer_to = {}
 
+--- @param surface LuaSurface
+--- @param search_position MapPosition
+--- @param item_wl FocusItemWhitelist
+--- @return FocusWatchdog?
+function transfer_to.item_on_ground(surface, search_position, item_wl)
+    utility.debug_pos(surface, search_position, utility.__dc_item_entity_seek)
+
+    local candidates = surface.find_entities_filtered({
+        position = search_position,
+        type = {"item-entity"}
+        -- Item on ground loses force
+    })
+    if #candidates == 0
+        then return end
+    for _, candidate in ipairs(candidates) do
+        if utility.is_item_filtered(candidate.stack, item_wl) then
+            return watchdog.create.item_on_ground(candidates[1])
+        end
+    end
+end
+
 --- @class WatchInserterCandidateRestrictions
 --- @field source? LuaEntity
 --- @field target? LuaEntity
 --- @field swinging_towards? boolean
 
 --- @param surface LuaSurface
---- @param force ForceID
+--- @param force? ForceID
 --- @param search_area BoundingBox
 --- @param ref_pos MapPosition
 --- @param item_wl FocusItemWhitelist
@@ -35,15 +56,15 @@ function transfer_to.inserter_nearby(surface, force, search_area, ref_pos, item_
         if restrictions.target ~= nil and candidate.drop_target ~= restrictions.target
             then return end
 
-        if not restrictions.swinging_towards then
-            return utility.sq_distance(ref_pos, candidate.held_stack_position)
-        end
+        if restrictions.swinging_towards and (
+            utility.sq_distance(candidate.held_stack_position, candidate.pickup_position)
+            >
+            utility.inserter_search_d_picking_up_feather
+        ) then return end
 
-        local d_hand_to_pickup = utility.sq_distance(candidate.held_stack_position, candidate.pickup_position)
-        if d_hand_to_pickup > utility.inserter_search_d_picking_up_feather
-            then return end
+        utility.debug_pos(surface, candidate.position, utility.__dc_min_pass)
 
-        return d_hand_to_pickup
+        return utility.sq_distance(ref_pos, candidate.held_stack_position)
     end)
 
     if best_guess ~= nil then
@@ -56,23 +77,16 @@ end
 --- @param item_wl FocusItemWhitelist
 function transfer_to.newest_item_on_belt(target_belt_entity, item_wl)
     local best_guess, line_idx = utility.minimum_on_belt(target_belt_entity, function (candidate, line_idx)
-        utility.debug_pos(
-            target_belt_entity.surface,
-            target_belt_entity.get_line_item_position(line_idx, candidate.position),
-            utility.__dc_min_cand
-        )
+        utility.debug_item_on_line(candidate, line_idx, target_belt_entity, utility.__dc_min_cand)
         if not utility.is_item_filtered(candidate.stack, item_wl)
             then return end
 
+        utility.debug_item_on_line(candidate, line_idx, target_belt_entity, utility.__dc_min_pass)
         return -candidate.unique_id -- Pick newest
     end)
 
     if best_guess and line_idx then
-        utility.debug_pos(
-            target_belt_entity.surface,
-            target_belt_entity.get_line_item_position(line_idx, best_guess.position),
-            utility.__dc_min_pick
-        )
+        utility.debug_item_on_line(best_guess, line_idx, target_belt_entity, utility.__dc_min_pick)
         return watchdog.create.item_on_belt(best_guess, line_idx, target_belt_entity)
     end
 end
@@ -82,7 +96,7 @@ end
 --- @field target? LuaEntity
 
 --- @param surface LuaSurface
---- @param force ForceID
+--- @param force? ForceID
 --- @param search_area BoundingBox
 --- @param item_wl FocusItemWhitelist
 --- @param restrictions WatchLoaderCandidateRestrictions
@@ -109,7 +123,7 @@ function transfer_to.loader_nearby(surface, force, search_area, item_wl, restric
 end
 
 --- @param surface LuaSurface
---- @param force ForceID
+--- @param force? ForceID
 --- @param search_area BoundingBox
 --- @param ref_pos MapPosition
 --- @param item_wl FocusItemWhitelist
@@ -189,6 +203,9 @@ function transfer_to.next(entity, item_wl)
             {source = entity, swinging_towards = true}
         )
     end
+    if entity.type == "item-entity" then
+        return watchdog.create.item_on_ground(entity)
+    end
 end
 
 --- @param entity LuaEntity
@@ -199,16 +216,7 @@ function transfer_to.drop_target(entity, item_wl)
 
     local drop_target = entity.drop_target
     if drop_target == nil then
-        utility.debug_pos(entity.surface, entity.drop_position, utility.__dc_item_entity_seek)
-
-        local dropped_item_entity = entity.surface.find_entities_filtered({
-            position = entity.drop_position,
-            type = {"item-entity"},
-            force = entity.force
-        })
-        if dropped_item_entity == nil
-            then return end
-        return transfer_to.next(dropped_item_entity, item_wl)
+        return transfer_to.item_on_ground(entity.surface, entity.drop_position, item_wl)
     end
 
     if drop_target.type ~= "transport-belt" then

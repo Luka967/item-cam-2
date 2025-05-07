@@ -2,12 +2,21 @@ local utility = require("utility")
 
 --- @class FocusWatchdog
 --- @field type string
---- @field type_changes_surface? boolean
 --- @field handle LuaEntity
 --- @field pin any
 --- @field item_wl? FocusItemWhitelist Future item lookup whitelist
 
 local create = {}
+
+--- @param entity LuaEntity
+function create.item_on_ground(entity)
+    --- @type FocusWatchdog
+    return {
+        type = "item-on-ground",
+        handle = entity,
+        item_wl = {item = utility.item_stack_proto(entity.stack)}
+    }
+end
 
 --- @param entity LuaEntity
 --- @param item ItemIDAndQualityIDPair
@@ -167,7 +176,6 @@ function create.item_in_cargo_pod(entity, item)
     --- @type FocusWatchdog
     return {
         type = "item-in-cargo-pod",
-        type_changes_surface = true,
         handle = entity,
         item_wl = {item = item},
         --- @type PinItemInCargoPod
@@ -250,6 +258,7 @@ local function just_get_handle_selection_box(watchdog)
 end
 --- @type table<string, fun(watchdog: FocusWatchdog): MapPosition>
 local get_position = {
+    ["item-on-ground"] = just_get_handle_pos,
     ["item-in-container"] = just_get_handle_selection_box, -- Includes wagons, so just make it a catch-all
     ["item-on-belt"] = function (watchdog)
         return watchdog.handle.get_line_item_position(watchdog.pin.line_idx, watchdog.pin.it.position)
@@ -276,6 +285,7 @@ local function just_get_handle_surface(watchdog)
 end
 --- @type table<string, fun(watchdog: FocusWatchdog): LuaSurface>
 local get_surface = {
+    ["item-on-ground"] = just_get_handle_surface,
     ["item-in-container"] = just_get_handle_surface,
     ["item-in-crafting-machine"] = just_get_handle_surface,
     ["item-held-by-robot"] = just_get_handle_surface,

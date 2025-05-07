@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.8.11
+Date: 2025-05-07
+  Minor Features:
+    - You can now start following from an item on ground
+    - Focus tracker now properly handles items dropped to ground by drill, recycler, inserter
+  Bugfixes:
+    - Fixed tracking item on linked belt not changing surfaces when it's absolutely possible to (https://mods.factorio.com/mod/item-cam-2/discussion/681ba0f3a752b5ff81bcee5b)
+---------------------------------------------------------------------------------------------------
 Version: 0.8.10
 Date: 2025-05-05
   Features:

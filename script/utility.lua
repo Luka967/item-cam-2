@@ -16,6 +16,7 @@ utility.__dc_item_entity_seek = {0, 255, 255}
 
 utility.__dc_robot_pos = {255, 0, 0}
 utility.__dc_min_cand = {255, 0, 0}
+utility.__dc_min_pass = {255, 255, 0}
 utility.__dc_min_pick = {0, 255, 0}
 
 --- @param surface LuaSurface
@@ -29,6 +30,22 @@ function utility.debug_pos(surface, position, color)
         color = color,
         width = 1,
         target = position,
+        radius = 0.25,
+        time_to_live = utility.__d_ttl
+    })
+end
+--- @param item_on_line DetailedItemOnLine
+--- @param line_idx integer
+--- @param entity LuaEntity
+--- @param color Color.0
+function utility.debug_item_on_line(item_on_line, line_idx, entity, color)
+    if not settings.global["debug-tracker"].value
+        then return end
+    rendering.draw_circle({
+        surface = entity.surface,
+        color = color,
+        width = 1,
+        target = entity.get_line_item_position(line_idx, item_on_line.position),
         radius = 0.25,
         time_to_live = utility.__d_ttl
     })
@@ -369,7 +386,7 @@ utility.loader_search_d = 1.5
 utility.robot_search_d = 0
 utility.agricultural_tower_search_tiles = 3
 utility.agricultural_tower_search_d = 12
-utility.smooth_end_feather = 0.1
+utility.smooth_end_feather = 0.05
 
 -- Building direction -> belt piece direction -> target line_idx
 utility.drop_belt_line_idx = {

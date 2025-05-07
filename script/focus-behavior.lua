@@ -167,11 +167,14 @@ function focus_behavior.update_location(focus)
     if not watching.handle.valid
         then return false end
 
+    local new_surface = watchdog.get_surface[watching.type](watching)
+    if new_surface ~= focus.surface and focus.smoothing ~= nil then
+        utility.debug("smoothing axed because surface changed")
+        focus.smoothing = nil
+    end
+    focus.surface = new_surface
     focus.position = watchdog.get_position[watching.type](watching)
     update_smooth_position(focus)
-    if watching.type_changes_surface then
-        focus.surface = watchdog.get_surface[watching.type](watching)
-    end
 end
 
 return focus_behavior

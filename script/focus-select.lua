@@ -1,7 +1,11 @@
 local transfer_to = require("focus-transfer")
 local watchdog = require("focus-watchdog")
 local utility = require("utility")
-local const = require("const")
+
+--- @param selected LuaEntity
+local function item_on_ground(selected)
+    return {watchdog.create.item_on_ground(selected)}
+end
 
 --- @param selected LuaEntity
 local function inserter_with_item_in_hand(selected)
@@ -98,6 +102,7 @@ local function minable_plant(selected)
 end
 
 local map = {
+    ["item-entity"] = item_on_ground,
     ["inserter"] = inserter_with_item_in_hand,
     ["mining-drill"] = mining_drill_with_resource,
     ["cargo-bay"] = cargo_bay_proxy_to_main_container,

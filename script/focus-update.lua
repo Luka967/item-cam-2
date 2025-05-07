@@ -6,8 +6,19 @@ local handle_invalid_map = {}
 local tick_map = {}
 local environment_changed_map = {}
 
+tick_map["item-on-ground"] = function ()
+    return true
+end
 --- @param focus FocusInstance
-tick_map["item-entity"] = function (focus)
+handle_invalid_map["item-on-ground"] = function (focus)
+    focus.watching = transfer_to.inserter_nearby(
+        focus.surface,
+        nil,
+        utility.aabb_around(focus.position, utility.inserter_search_d),
+        focus.position,
+        focus.watching.item_wl,
+        {swinging_towards = true, source = nil}
+    )
     return true
 end
 
@@ -112,8 +123,20 @@ tick_map["item-in-inserter-hand"] = function (focus, handle)
 
     local dropped_into = handle.drop_target
     if dropped_into == nil then
-        utility.debug("watchdog lost: dropped_into nil")
-        return false
+        focus.watching =
+            transfer_to.item_on_ground(
+                handle.surface,
+                handle.drop_position,
+                focus.watching.item_wl
+            ) or transfer_to.inserter_nearby(
+                handle.surface,
+                nil,
+                utility.aabb_around(handle.drop_position, utility.inserter_search_d),
+                handle.drop_position,
+                focus.watching.item_wl,
+                {swinging_towards = true, source = nil}
+            )
+        return true
     end
 
     focus.watching = transfer_to.next(dropped_into, focus.watching.item_wl)

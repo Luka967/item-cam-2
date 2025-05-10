@@ -58,7 +58,6 @@ function create.item_on_belt(item_on_line, line_idx, belt_entity)
 end
 
 --- @param entity LuaEntity
---- @return FocusWatchdog
 function create.item_in_inserter_hand(entity)
     assert(entity.held_stack.valid_for_read, "inserter has nothing in hand")
 
@@ -195,7 +194,6 @@ function create.item_in_container_with_cargo_hatches(entity, item)
 end
 
 --- @param entity LuaEntity
---- @return FocusWatchdog
 function create.item_coming_from_asteroid_collector(entity)
     --- @type FocusWatchdog
     return {
@@ -207,7 +205,6 @@ end
 
 --- @param entity LuaEntity
 --- @param item ItemIDAndQualityIDPair
---- @return FocusWatchdog
 function create.seed_in_agricultural_tower(entity, item)
     --- @type FocusWatchdog
     return {
@@ -218,7 +215,6 @@ function create.seed_in_agricultural_tower(entity, item)
 end
 
 --- @param entity LuaEntity
---- @return FocusWatchdog
 function create.plant_growing(entity)
     local mine_products = entity.prototype.mineable_properties.products
     assert(mine_products, "plant has no products")
@@ -234,11 +230,20 @@ function create.plant_growing(entity)
 end
 
 --- @param entity LuaEntity
---- @return FocusWatchdog
 function create.item_coming_from_agricultural_tower(entity)
     --- @type FocusWatchdog
     return {
         type = "item-coming-from-agricultural-tower",
+        handle = entity,
+        item_wl = utility.__no_wl
+    }
+end
+
+--- @param entity any
+function create.end_lab(entity)
+    --- @type FocusWatchdog
+    return {
+        type = "end-lab",
         handle = entity,
         item_wl = utility.__no_wl
     }
@@ -276,7 +281,8 @@ local get_position = {
     ["item-coming-from-asteroid-collector"] = just_get_handle_pos,
     ["seed-in-agricultural-tower"] = just_get_handle_pos,
     ["plant-growing"] = just_get_handle_selection_box,
-    ["item-coming-from-agricultural-tower"] = just_get_handle_pos
+    ["item-coming-from-agricultural-tower"] = just_get_handle_pos,
+    ["end-lab"] = just_get_handle_pos
 }
 
 --- @param watchdog FocusWatchdog
@@ -299,7 +305,8 @@ local get_surface = {
     ["item-coming-from-asteroid-collector"] = just_get_handle_surface,
     ["seed-in-agricultural-tower"] = just_get_handle_surface,
     ["plant-growing"] = just_get_handle_surface,
-    ["item-coming-from-agricultural-tower"] = just_get_handle_surface
+    ["item-coming-from-agricultural-tower"] = just_get_handle_surface,
+    ["end-lab"] = just_get_handle_surface
 }
 
 return {

@@ -394,19 +394,19 @@ utility.drop_belt_line_idx = {
         [defines.direction.north] = 1,
         [defines.direction.south] = 2,
         [defines.direction.west] = 2,
-        [defines.direction.east] = 2,
+        [defines.direction.east] = 2
     },
     [defines.direction.west] = {
         [defines.direction.north] = 2,
         [defines.direction.south] = 1,
         [defines.direction.west] = 2,
-        [defines.direction.east] = 2,
+        [defines.direction.east] = 2
     },
     [defines.direction.north] = {
         [defines.direction.east] = 2,
         [defines.direction.west] = 1,
         [defines.direction.north] = 2,
-        [defines.direction.south] = 2,
+        [defines.direction.south] = 2
     },
     [defines.direction.south] = {
         [defines.direction.east] = 1,

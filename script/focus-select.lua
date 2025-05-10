@@ -101,6 +101,11 @@ local function minable_plant(selected)
     return {watchdog.create.plant_growing(selected)}
 end
 
+--- @param selected LuaEntity
+local function lab(selected)
+    return {watchdog.create.end_lab(selected)}
+end
+
 local map = {
     ["item-entity"] = item_on_ground,
     ["inserter"] = inserter_with_item_in_hand,
@@ -108,7 +113,8 @@ local map = {
     ["cargo-bay"] = cargo_bay_proxy_to_main_container,
     ["asteroid-collector"] = asteroid_collector,
     ["agricultural-tower"] = agricultural_tower,
-    ["plant"] = minable_plant
+    ["plant"] = minable_plant,
+    ["lab"] = lab
 }
 for prototype in pairs(utility.is_belt) do
     map[prototype] = belt_with_items_on_it

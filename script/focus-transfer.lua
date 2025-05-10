@@ -174,11 +174,6 @@ function transfer_to.next(entity, item_wl)
     if entity_type == "inserter" then
         return watchdog.create.item_in_inserter_hand(entity)
     end
-    if entity_type == "agricultural-tower" then
-        -- Happens only when it's inputted into. Output is triggered independently
-        assert(item_wl.item, "expected whitelist on item")
-        return watchdog.create.seed_in_agricultural_tower(entity, item_wl.item)
-    end
     if utility.is_crafting_machine[entity_type] then
         return watchdog.create.item_in_crafting_machine(entity)
     end
@@ -203,7 +198,15 @@ function transfer_to.next(entity, item_wl)
             {source = entity, swinging_towards = true}
         )
     end
-    if entity.type == "item-entity" then
+    if entity_type == "agricultural-tower" then
+        -- Happens only when it's inputted into. Output is triggered independently
+        assert(item_wl.item, "expected whitelist on item")
+        return watchdog.create.seed_in_agricultural_tower(entity, item_wl.item)
+    end
+    if entity_type == "lab" then
+        return watchdog.create.end_lab(entity)
+    end
+    if entity_type == "item-entity" then
         return watchdog.create.item_on_ground(entity)
     end
 end

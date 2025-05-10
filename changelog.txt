@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.8.12
+Date: 2025-05-10
+  Minor Features:
+    - Focus tracker will now follow item inserted into lab and remain there. It will not follow chains
+---------------------------------------------------------------------------------------------------
 Version: 0.8.11
 Date: 2025-05-07
   Minor Features:

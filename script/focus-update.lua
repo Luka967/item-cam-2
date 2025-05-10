@@ -390,6 +390,10 @@ tick_map["item-coming-from-agricultural-tower"] = function (focus, handle)
     return item_in_container(focus, handle)
 end
 
+tick_map["end-lab"] = function ()
+    return true
+end
+
 --- @class SmoothingDefinition
 --- @field speed? number
 --- @field min_speed? number

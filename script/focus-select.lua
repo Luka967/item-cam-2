@@ -1,3 +1,4 @@
+local const = require("const")
 local transfer_to = require("focus-transfer")
 local watchdog = require("focus-watchdog")
 local utility = require("utility")
@@ -31,7 +32,7 @@ end
 
 --- @param selected LuaEntity
 local function container_with_contents(selected)
-    local inventory_type = utility.container_inventory_idx[selected.type]
+    local inventory_type = const.container_inventory_idx[selected.type]
     if not inventory_type
         then return end
 
@@ -116,16 +117,16 @@ local map = {
     ["plant"] = minable_plant,
     ["lab"] = lab
 }
-for prototype in pairs(utility.is_belt) do
+for prototype in pairs(const.is_belt) do
     map[prototype] = belt_with_items_on_it
 end
-for prototype in pairs(utility.container_inventory_idx) do
+for prototype in pairs(const.container_inventory_idx) do
     map[prototype] = container_with_contents
 end
-for prototype in pairs(utility.is_crafting_machine) do
+for prototype in pairs(const.is_crafting_machine) do
     map[prototype] = crafting_machine_with_recipe
 end
-for prototype in pairs(utility.is_robot) do
+for prototype in pairs(const.is_robot) do
     map[prototype] = robot_holding_item
 end
 

@@ -143,7 +143,7 @@ local function update_smooth_position(focus)
     if
         not smoothing
         or game.tick >= smoothing.final_tick
-        or real_d < utility.smooth_end_feather
+        or real_d < const.smooth_end_feather
     then
         focus.smoothing = nil
         focus.smooth_position.x = focus.position.x

@@ -1,3 +1,4 @@
+local const = require("const")
 local utility = {}
 
 function utility.debug(...)
@@ -5,19 +6,6 @@ function utility.debug(...)
         then return end
     print(game.tick, ...)
 end
-
-utility.__d_ttl = 30
-utility.__dc_bounding = {255, 0, 0}
-utility.__dc_bounding_real = {0, 0, 255}
-utility.__dc_inserter_seek = {255, 255, 0}
-utility.__dc_loader_seek = {0, 255, 0}
-utility.__dc_robot_seek = {0, 255, 255}
-utility.__dc_item_entity_seek = {0, 255, 255}
-
-utility.__dc_robot_pos = {255, 0, 0}
-utility.__dc_min_cand = {255, 0, 0}
-utility.__dc_min_pass = {255, 255, 0}
-utility.__dc_min_pick = {0, 255, 0}
 
 --- @param surface LuaSurface
 --- @param position MapPosition
@@ -31,7 +19,7 @@ function utility.debug_pos(surface, position, color)
         width = 1,
         target = position,
         radius = 0.25,
-        time_to_live = utility.__d_ttl
+        time_to_live = const.__d_ttl
     })
 end
 --- @param item_on_line DetailedItemOnLine
@@ -47,7 +35,7 @@ function utility.debug_item_on_line(item_on_line, line_idx, entity, color)
         width = 1,
         target = entity.get_line_item_position(line_idx, item_on_line.position),
         radius = 0.25,
-        time_to_live = utility.__d_ttl
+        time_to_live = const.__d_ttl
     })
 end
 --- @param surface LuaSurface
@@ -62,7 +50,7 @@ function utility.debug_area(surface, area, color)
         width = 1,
         left_top = area.left_top,
         right_bottom = area.right_bottom,
-        time_to_live = utility.__d_ttl
+        time_to_live = const.__d_ttl
     })
 end
 
@@ -379,93 +367,5 @@ function utility.products_filtered(products, wl)
         then return end
     return results
 end
-
-utility.inserter_search_d = 2.2
-utility.inserter_search_d_picking_up_feather = 0.08
-utility.loader_search_d = 1.5
-utility.robot_search_d = 0
-utility.agricultural_tower_search_tiles = 3
-utility.agricultural_tower_search_d = 12
-utility.smooth_end_feather = 0.05
-
--- Building direction -> belt piece direction -> target line_idx
-utility.drop_belt_line_idx = {
-    [defines.direction.east] = {
-        [defines.direction.north] = 1,
-        [defines.direction.south] = 2,
-        [defines.direction.west] = 2,
-        [defines.direction.east] = 2
-    },
-    [defines.direction.west] = {
-        [defines.direction.north] = 2,
-        [defines.direction.south] = 1,
-        [defines.direction.west] = 2,
-        [defines.direction.east] = 2
-    },
-    [defines.direction.north] = {
-        [defines.direction.east] = 2,
-        [defines.direction.west] = 1,
-        [defines.direction.north] = 2,
-        [defines.direction.south] = 2
-    },
-    [defines.direction.south] = {
-        [defines.direction.east] = 1,
-        [defines.direction.west] = 2,
-        [defines.direction.north] = 2,
-        [defines.direction.south] = 2
-    },
-}
-
-utility.is_belt = {
-    ["transport-belt"] = true,
-    ["splitter"] = true,
-    ["lane-splitter"] = true,
-    ["underground-belt"] = true,
-    ["linked-belt"] = true,
-    ["loader"] = true
-}
-utility.all_belt = {"transport-belt", "splitter", "lane-splitter", "underground-belt", "linked-belt", "loader"}
-
-utility.missing_inventory_defines = {
-    agricultural_tower_input = 2,
-    agricultural_tower_output = 3
-}
-
-utility.container_inventory_idx = {
-    ["container"] = defines.inventory.chest,
-    ["logistic-container"] = defines.inventory.chest,
-    ["infinity-container"] = defines.inventory.chest,
-    ["temporary-container"] = defines.inventory.chest,
-    ["cargo-wagon"] = defines.inventory.cargo_wagon,
-    ["cargo-landing-pad"] = defines.inventory.cargo_landing_pad_main,
-    ["space-platform-hub"] = defines.inventory.hub_main,
-    ["rocket-silo"] = defines.inventory.rocket_silo_rocket
-}
-
-utility.is_robot = {
-    ["construction-robot"] = true,
-    ["logistic-robot"] = true
-}
-utility.all_bot = {"construction-robot", "logistic-robot"}
-
-utility.is_crafting_machine = {
-    ["furnace"] = true,
-    ["assembling-machine"] = true
-}
-
-utility.all_suitable_robot_order = {
-    [defines.robot_order_type.deliver] = true,
-    [defines.robot_order_type.deliver_items] = true,
-    [defines.robot_order_type.pickup] = true,
-    [defines.robot_order_type.pickup_items] = true
-}
-utility.all_pickup_robot_order = {
-    [defines.robot_order_type.pickup] = true,
-    [defines.robot_order_type.pickup_items] = true
-}
-utility.all_deliver_robot_order = {
-    [defines.robot_order_type.deliver] = true,
-    [defines.robot_order_type.deliver_items] = true
-}
 
 return utility

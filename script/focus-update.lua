@@ -1,6 +1,7 @@
+local const = require("const")
+local utility = require("utility")
 local watchdog = require("focus-watchdog")
 local transfer_to = require("focus-transfer")
-local utility = require("utility")
 
 local handle_invalid_map = {}
 local tick_map = {}
@@ -14,7 +15,7 @@ handle_invalid_map["item-on-ground"] = function (focus)
     focus.watching = transfer_to.inserter_nearby(
         focus.surface,
         nil,
-        utility.aabb_around(focus.position, utility.inserter_search_d),
+        utility.aabb_around(focus.position, const.inserter_search_d),
         focus.position,
         focus.watching.item_wl,
         {swinging_towards = true, source = nil}
@@ -82,7 +83,7 @@ tick_map["item-on-belt"] = function (focus, handle, pin)
             -- noop
         elseif lookup_entry.type == nil then
             it, next_line_idx, next_belt = utility.first_on_belts(lookup_entry, seek_fn)
-        elseif utility.is_belt[lookup_entry.type] then
+        elseif const.is_belt[lookup_entry.type] then
             it, next_line_idx = utility.first_on_belt(lookup_entry, seek_fn)
             next_belt = lookup_entry
         else
@@ -105,7 +106,7 @@ tick_map["item-on-belt"] = function (focus, handle, pin)
     focus.watching = transfer_to.inserter_nearby(
         handle.surface,
         handle.force,
-        utility.aabb_around(focus.position, utility.inserter_search_d),
+        utility.aabb_around(focus.position, const.inserter_search_d),
         focus.position,
         focus.watching.item_wl,
         utility.__no_wl
@@ -131,7 +132,7 @@ tick_map["item-in-inserter-hand"] = function (focus, handle)
             ) or transfer_to.inserter_nearby(
                 handle.surface,
                 nil,
-                utility.aabb_around(handle.drop_position, utility.inserter_search_d),
+                utility.aabb_around(handle.drop_position, const.inserter_search_d),
                 handle.drop_position,
                 focus.watching.item_wl,
                 {swinging_towards = true, source = nil}
@@ -200,7 +201,7 @@ tick_map["item-held-by-robot"] = function (focus, handle, pin)
     if order ~= nil and (
         order.target == drop_target
         or order.secondary_target == drop_target
-    ) and utility.all_deliver_robot_order[order.type]
+    ) and const.all_deliver_robot_order[order.type]
         then return true end
 
     utility.debug("watchdog changing: first robot order no longer deliver or target changed")
@@ -351,7 +352,7 @@ environment_changed_map["seed-in-agricultural-tower"] = function (focus, handle,
 
     local tower_reach_tiles =
         handle.prototype.growth_grid_tile_size
-        * utility.agricultural_tower_search_tiles -- Not exposed in API currently
+        * const.agricultural_tower_search_tiles -- Not exposed in API currently
     if dx <= tower_reach_tiles or dy <= tower_reach_tiles then
         focus.watching = watchdog.create.plant_growing(cause_entity)
     end
@@ -365,9 +366,9 @@ end
 --- @param focus FocusInstance
 handle_invalid_map["plant-growing"] = function (focus)
     local last_position = focus.position
-    local search_area = utility.aabb_around(last_position, utility.agricultural_tower_search_d)
+    local search_area = utility.aabb_around(last_position, const.agricultural_tower_search_d)
 
-    utility.debug_area(focus.surface, search_area, utility.__dc_inserter_seek)
+    utility.debug_area(focus.surface, search_area, const.__dc_inserter_seek)
 
     local closest_crane = utility.minimum_of(focus.surface.find_entities_filtered({
         area = search_area,

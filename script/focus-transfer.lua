@@ -251,7 +251,7 @@ end
 --- @param also_drop_target? boolean
 function transfer_to.taken_out_of_building(entity, item_wl, also_drop_target)
     utility.debug_area(entity.surface, entity.selection_box, utility.__dc_bounding)
-    local entity_box = utility.adjusted_selection_box(entity)
+    local entity_box = utility.rotated_selection_box(entity)
     utility.debug_area(entity.surface, entity_box, utility.__dc_bounding_real)
 
     return

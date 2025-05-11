@@ -129,14 +129,14 @@ function utility.aabb_expand(aabb, w, h)
     }
 end
 
-local has_non_adjusted_selection_box = {
+local has_non_rotated_selection_box = {
     ["car"] = true,
     ["cargo-wagon"] = true,
     ["fluid-wagon"] = true
 }
 --- @param entity LuaEntity
-function utility.adjusted_selection_box(entity)
-    if not has_non_adjusted_selection_box[entity.type] then
+function utility.rotated_selection_box(entity)
+    if not has_non_rotated_selection_box[entity.type] then
         return entity.selection_box
     end
 

@@ -22,12 +22,6 @@ local function add_script_effect(name, accessor)
     accessor().created_effect = effects_set
 end
 
-for proto_name in pairs(data.raw["cargo-landing-pad"]) do
-    add_script_effect(const.name_trigger_remember_landing_pad, function ()
-        return data.raw["cargo-landing-pad"][proto_name]
-    end)
-end
-
 for proto_name in pairs(data.raw["cargo-pod"]) do
     add_script_effect(const.name_trigger_check_cargo_pod_follow, function ()
         return data.raw["cargo-pod"][proto_name]

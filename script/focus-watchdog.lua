@@ -214,10 +214,19 @@ function create.seed_in_agricultural_tower(entity, item)
     }
 end
 
+--- @class PinPlantGrowing
+--- @field last_tick_towers_nearby LuaEntity[]
+--- @field last_tick_crane_destinations MapPosition[]
+
 --- @param entity LuaEntity
 function create.plant_growing(entity)
     local mine_products = entity.prototype.mineable_properties.products
     assert(mine_products, "plant has no products")
+
+    local towers_nearby = utility.search_agricultural_towers_owning_plant(entity)
+    local towers_crane_destinations = utility.mapped(towers_nearby, function (entry)
+        return entry.crane_destination
+    end)
 
     --- @type FocusWatchdog
     return {
@@ -225,6 +234,11 @@ function create.plant_growing(entity)
         handle = entity,
         item_wl = {
             items = utility.products_filtered(mine_products, {items = true})
+        },
+        --- @type PinPlantGrowing
+        pin = {
+            last_tick_towers_nearby = towers_nearby,
+            last_tick_crane_destinations = towers_crane_destinations
         }
     }
 end

@@ -281,7 +281,11 @@ tick_map["item-in-cargo-pod"] = function (focus, handle, pin)
         return false
     end
 
-    pin.drop_target = transfer_to.bay_associate_owner(target)
+    if target.type == "cargo-bay" then
+        pin.drop_target = target.cargo_bay_connection_owner
+    else
+        pin.drop_target = target
+    end
     utility.debug("watchdog updated: drop_target selected")
 
     -- The actual watchdog switch happens when cargo pod entity is destroyed
@@ -340,6 +344,7 @@ tick_map["seed-in-agricultural-tower"] = function ()
     return true
 end
 
+--- If cause entity is new plant, check if tower we're watching owns it
 --- @param focus FocusInstance
 --- @param handle LuaEntity
 --- @param pin nil
@@ -347,40 +352,70 @@ end
 environment_changed_map["seed-in-agricultural-tower"] = function (focus, handle, pin, cause_entity)
     if cause_entity.type ~= "plant"
         then return true end
-    local dx = math.abs(handle.position.x - cause_entity.position.x)
-    local dy = math.abs(handle.position.y - cause_entity.position.y)
-
-    local tower_reach_tiles =
-        handle.prototype.growth_grid_tile_size
-        * const.agricultural_tower_search_tiles -- Not exposed in API currently
-    if dx <= tower_reach_tiles or dy <= tower_reach_tiles then
+    if utility.contains(handle.owned_plants, cause_entity) then
         focus.watching = watchdog.create.plant_growing(cause_entity)
     end
     return true
 end
 
-tick_map["plant-growing"] = function ()
+--- @param focus FocusInstance
+--- @param pin PinPlantGrowing
+tick_map["plant-growing"] = function (focus, _, pin)
+    -- Crane destination can immediately change on the tick our plant gets destroyed
+    -- so we're going to remember their last known position
+    for idx, tower_entity in ipairs(pin.last_tick_towers_nearby) do
+        if not tower_entity.valid then
+            table.remove(pin.last_tick_towers_nearby, idx)
+            table.remove(pin.last_tick_crane_destinations, idx)
+        else
+            pin.last_tick_crane_destinations[idx] = tower_entity.crane_destination
+        end
+    end
+
     return true
 end
 
 --- @param focus FocusInstance
-handle_invalid_map["plant-growing"] = function (focus)
-    local last_position = focus.position
-    local search_area = utility.aabb_around(last_position, const.agricultural_tower_search_d)
+--- @param handle LuaEntity
+--- @param pin PinPlantGrowing
+--- @param cause_entity LuaEntity
+environment_changed_map["plant-growing"] = function (focus, handle, pin, cause_entity)
+    if cause_entity.type ~= "agricultural-tower"
+        then return true end
 
-    utility.debug_area(focus.surface, search_area, const.__dc_inserter_seek)
-
-    local closest_crane = utility.minimum_of(focus.surface.find_entities_filtered({
-        area = search_area,
-        type = {"agricultural-tower"}
-    }), function (candidate)
-        return utility.sq_distance(candidate.crane_destination, last_position)
+    -- This new tower might include our plant. Recompute last tick
+    pin.last_tick_towers_nearby = utility.search_agricultural_towers_owning_plant(handle)
+    pin.last_tick_crane_destinations = utility.mapped(pin.last_tick_towers_nearby, function (entry)
+        return entry.crane_destination
     end)
 
-    if closest_crane == nil
-        then return false end
+    return true
+end
 
-    focus.watching = watchdog.create.item_coming_from_agricultural_tower(closest_crane)
+--- @param focus FocusInstance
+--- @param pin PinPlantGrowing
+handle_invalid_map["plant-growing"] = function (focus, _, pin)
+    local best_guess, best_idx = utility.minimum_of(pin.last_tick_towers_nearby, function (_, idx)
+        utility.debug_pos(focus.surface, pin.last_tick_crane_destinations[idx], const.__dc_min_pass)
+
+        return utility.sq_distance(pin.last_tick_crane_destinations[idx], focus.position), idx
+    end)
+
+    if best_guess == nil
+        then return end
+    utility.debug_pos(focus.surface, pin.last_tick_crane_destinations[best_idx], const.__dc_min_pick)
+
+    -- transfer_to.next assumes the agricultural tower received a seed.
+    -- Replicate a simple inserter-took-same-tick check that entities considered container would have
+    focus.watching =
+        transfer_to.inserter_nearby(
+            focus.surface,
+            nil, -- Plants lose force
+            utility.aabb_expand(best_guess.selection_box, const.inserter_search_d),
+            best_guess.position,
+            focus.watching.item_wl,
+            {source = best_guess, swinging_towards = true}
+        ) or watchdog.create.item_coming_from_agricultural_tower(best_guess)
     return true
 end
 

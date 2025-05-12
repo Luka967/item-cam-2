@@ -1,5 +1,4 @@
 local const = require("const")
-local state = require("state")
 local utility = require("utility")
 local watchdog = require("focus-watchdog")
 
@@ -277,27 +276,6 @@ function transfer_to.taken_out_of_building(entity, item_wl, also_drop_target)
             entity.position,
             item_wl
         )
-end
-
---- @param target LuaEntity
-function transfer_to.bay_associate_owner(target)
-    if target.type ~= "cargo-bay" then
-        return target
-    end
-
-    if target.surface.platform ~= nil then
-        return target.surface.platform.hub
-    end
-
-    local landing_pads_here = state.landing_pads.all_on(target.surface_index)
-    assert(landing_pads_here, "retrieved no landing pads for a surface that apparently has one")
-
-    for _, candidate in pairs(landing_pads_here) do
-        if utility.contains(candidate.get_cargo_bays(), target) then
-            return candidate
-        end
-    end
-    assert(false, "couldn't backwards match cargo bay to its landing pad because it's not remembered")
 end
 
 return transfer_to

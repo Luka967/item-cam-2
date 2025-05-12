@@ -167,6 +167,21 @@ end
 
 --- @generic T, U
 --- @param arr T[]
+--- @param m_fn fun(entry: T): U?
+--- @return U[]
+function utility.mapped(arr, m_fn)
+    local ret = {}
+    for _, entry in ipairs(arr) do
+        local ret_entry = m_fn(entry)
+        if ret_entry ~= nil then
+            table.insert(ret, ret_entry)
+        end
+    end
+    return ret
+end
+
+--- @generic T, U
+--- @param arr T[]
 --- @param m_fn fun(entry: T): U[]?
 --- @return U[]
 function utility.mapped_flattened(arr, m_fn)
@@ -209,7 +224,7 @@ end
 
 --- @generic T, U
 --- @param arr T[]
---- @param d_fn fun(entry: T): number?, U?
+--- @param d_fn fun(entry: T, idx: number): number?, U?
 --- @return T?, U?
 function utility.minimum_of(arr, d_fn)
     if arr == nil
@@ -219,8 +234,8 @@ function utility.minimum_of(arr, d_fn)
     local tag
 
     local cnt = 0
-    for _, entry in ipairs(arr) do
-        local d, new_tag = d_fn(entry)
+    for idx, entry in ipairs(arr) do
+        local d, new_tag = d_fn(entry, idx)
         if d ~= nil then cnt = cnt + 1 end
         if d ~= nil and (local_d == nil or d < local_d) then
             local_minimum = entry
@@ -344,6 +359,35 @@ function utility.item_stack_proto(item)
         name = item.name,
         quality = item.quality
     }
+end
+
+--- Search the surface for agricultural towers that may have the reach to mine plant at specified position
+--- @param plant_entity LuaEntity
+function utility.search_agricultural_towers_owning_plant(plant_entity)
+    local max_proto_distance = 0
+    for _, proto in pairs(prototypes.entity) do
+        if proto.type == "agricultural-tower" then
+            max_proto_distance = math.max(
+                max_proto_distance,
+                proto.agricultural_tower_radius * proto.growth_grid_tile_size
+            )
+        end
+    end
+    max_proto_distance = max_proto_distance + 1 -- Give buffer because plant's position will change as it grows
+
+    local search_area = utility.aabb_around(plant_entity.position, max_proto_distance)
+    utility.debug_area(plant_entity.surface, search_area, const.__dc_agricultural_tower_seek)
+
+    return utility.filtered(plant_entity.surface.find_entities_filtered({
+        area = search_area,
+        type = {"agricultural-tower"}
+    }), function (entry)
+        utility.debug_area(plant_entity.surface, entry.selection_box, const.__dc_min_pass)
+        if not utility.contains(entry.owned_plants, plant_entity)
+            then return end
+        utility.debug_area(plant_entity.surface, entry.selection_box, const.__dc_min_pick)
+        return true
+    end)
 end
 
 --- @class UtilityProductsOptions

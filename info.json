@@ -5,8 +5,8 @@
     "author": "HermanyAI",
     "factorio_version": "2.0",
     "dependencies": [
-        "base >= 2.0.0",
-        "? space-age >= 2.0.0",
+        "base >= 2.0.49",
+        "? space-age >= 2.0.49",
         "(?) tile-upgrade-planner >= 20.0.1"
     ],
     "description": "Follow an item as it's processed, like in the Factorio trailer. Spiritual successor to DaveMcW's Item Cam"

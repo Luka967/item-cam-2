@@ -52,7 +52,7 @@ end
 
 --- @param selected LuaEntity
 local function cargo_bay_proxy_to_main_container(selected)
-    return container_with_contents(transfer_to.bay_associate_owner(selected))
+    return container_with_contents(selected.cargo_bay_connection_owner)
 end
 
 --- @param selected LuaEntity

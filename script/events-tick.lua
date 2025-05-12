@@ -7,11 +7,6 @@ local focus_update = require("focus-update")
 local map_trigger_effects = {}
 
 --- @param event EventData.on_script_trigger_effect
-map_trigger_effects[const.name_trigger_remember_landing_pad] = function (event)
-    state.landing_pads.remember(event.cause_entity)
-end
-
---- @param event EventData.on_script_trigger_effect
 local function check_environment_changed_next_tick(event)
     table.insert(state.env_changed_next_tick, event.cause_entity)
 end
@@ -79,11 +74,8 @@ local function tick_one_focus(player_idx)
 end
 
 script.on_event(defines.events.on_object_destroyed, function (event)
-    if next_tick_registration_number ~= event.registration_number then
-        -- This is a landing pad getting destroyed
-        state.landing_pads.forget(event.registration_number)
-        return
-    end
+    if next_tick_registration_number ~= event.registration_number
+        then return end
     for player_idx in pairs(state.focuses.v) do
         tick_one_focus(player_idx)
     end

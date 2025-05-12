@@ -6,6 +6,7 @@ const.__dc_bounding_real = {0, 0, 255}
 const.__dc_inserter_seek = {255, 255, 0}
 const.__dc_loader_seek = {0, 255, 0}
 const.__dc_robot_seek = {0, 255, 255}
+const.__dc_agricultural_tower_seek = {255, 0, 255}
 const.__dc_item_entity_seek = {0, 255, 255}
 
 const.__dc_robot_pos = {255, 0, 0}
@@ -17,7 +18,6 @@ const.name_shortcut = "item-cam"
 const.name_selection_item = "item-cam"
 const.name_keybind = "item-cam"
 const.name_stop_console_command = "stop-item-cam"
-const.name_trigger_remember_landing_pad = "remember-landing-pad"
 const.name_trigger_check_cargo_pod_follow = "check-cargo-pod-follow"
 const.name_trigger_check_plant_follow = "check-plant-follow"
 
@@ -25,8 +25,6 @@ const.inserter_search_d = 2.2
 const.inserter_search_d_picking_up_feather = 0.08
 const.loader_search_d = 1.5
 const.robot_search_d = 0
-const.agricultural_tower_search_tiles = 3
-const.agricultural_tower_search_d = 12
 const.smooth_end_feather = 0.05
 
 -- Building direction -> belt piece direction -> target line_idx

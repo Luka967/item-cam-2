@@ -56,7 +56,6 @@ end
 --- @param focus FocusInstance
 function focus_behavior.start_following(focus)
     local player = focus.controlling
-    player.set_shortcut_toggled(const.name_shortcut, true)
 
     if
         player.cursor_stack
@@ -86,7 +85,6 @@ function focus_behavior.stop_following(focus)
     local player = focus.controlling
 
     focus.valid = false
-    player.set_shortcut_toggled(const.name_shortcut, false)
 
     -- Teleport player to proper surface before reassigning controller
     if game.get_surface(focus.previous_surface_idx) == nil then

@@ -14,6 +14,12 @@ const.__dc_min_cand = {255, 0, 0}
 const.__dc_min_pass = {255, 255, 0}
 const.__dc_min_pick = {0, 255, 0}
 
+--- @enum GuiId
+const.gui_id = {
+    pick_first_item = 1
+}
+
+const.name_options_shortcut = "item-cam-options"
 const.name_shortcut = "item-cam"
 const.name_selection_item = "item-cam"
 const.name_keybind = "item-cam"

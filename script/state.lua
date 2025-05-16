@@ -18,15 +18,20 @@ end
 local state = {
     focuses = focuses,
     --- @type LuaEntity[]
-    env_changed_next_tick = nil
+    env_changed_next_tick = nil,
+    gui_state = nil
 }
 
-function state.retrieve_from_storage()
+function state.init_storage()
     storage.focuses = storage.focuses or {}
     storage.env_changed_next_tick = storage.env_changed_next_tick or {}
+    storage.gui_state = storage.gui_state or {}
+end
 
+function state.retrieve_from_storage()
     focuses.v = storage.focuses
     state.env_changed_next_tick = storage.env_changed_next_tick
+    state.gui_state = storage.gui_state
 end
 
 return state

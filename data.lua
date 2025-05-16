@@ -31,6 +31,15 @@ data:extend({{
 }})
 
 data:extend({{
+    name = const.name_options_shortcut,
+    type = "shortcut",
+    icon = "__base__/graphics/icons/iron-plate.png",
+    small_icon = "__base__/graphics/icons/iron-plate.png",
+    action = "lua",
+    toggleable = true
+}})
+
+data:extend({{
     name = const.name_keybind,
     type = "custom-input",
     key_sequence = "ALT + C",

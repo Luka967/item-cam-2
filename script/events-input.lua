@@ -4,6 +4,8 @@ local focus_behavior = require("focus-behavior")
 local focus_select = require("focus-select")
 local utility = require("utility")
 
+local gui_test = require("gui.test")
+
 --- @param event EventData.on_player_selected_area
 local function start_item_cam(event)
     if event.item ~= const.name_selection_item
@@ -36,11 +38,6 @@ end
 
 --- @param event EventData.CustomInputEvent|EventData.on_lua_shortcut
 local function toggle_item_cam_shortcut(event)
-    if event.player_index == nil
-        then return end
-    if event.prototype_name ~= const.name_shortcut and event.input_name ~= const.name_keybind
-        then return end
-
     local player = game.get_player(event.player_index)
     if player == nil
         then return end
@@ -59,6 +56,36 @@ end
 commands.add_command("stop-item-cam", "Stop following with Item Cam", function (p1)
     stop_item_cam(p1.player_index)
 end)
-script.on_event(const.name_keybind, toggle_item_cam_shortcut)
-script.on_event(defines.events.on_lua_shortcut, toggle_item_cam_shortcut)
+
+--- @param event EventData.CustomInputEvent
+script.on_event(const.name_keybind, function (event)
+    toggle_item_cam_shortcut(event)
+end)
+
+script.on_event(defines.events.on_player_cursor_stack_changed, function (event)
+    local player = game.get_player(event.player_index)
+    if player == nil or player.cursor_stack == nil
+        then return end
+    local cursor_stack_name = player.cursor_stack.name
+
+    player.set_shortcut_toggled(const.name_shortcut, cursor_stack_name == const.name_selection_item)
+end)
+
+script.on_event(defines.events.on_lua_shortcut, function (event)
+    if event.prototype_name == const.name_shortcut then
+        toggle_item_cam_shortcut(event)
+        return
+    end
+
+    if event.prototype_name ~= const.name_options_shortcut
+        then return end
+
+    local player = game.get_player(event.player_index)
+    if player == nil
+        then return end
+    player.set_shortcut_toggled(const.name_options_shortcut, true)
+
+    gui_test.create(player, player.selected)
+end)
+
 script.on_event(defines.events.on_player_selected_area, start_item_cam)

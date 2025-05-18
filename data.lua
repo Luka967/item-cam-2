@@ -45,3 +45,65 @@ data:extend({{
     key_sequence = "ALT + C",
     action = "lua"
 }})
+
+data.raw["gui-style"]["default"].ic2gui_followrules_action_draggable_space = {
+    type = "empty_widget_style",
+    parent = "draggable_space",
+    minimal_width = 20,
+    height = 32,
+    horizontally_stretchable = "on"
+}
+
+data.raw["gui-style"]["default"].ic2gui_followrules_entry_list_scroll = {
+    type = "scroll_pane_style",
+    width = 500,
+    minimal_height = 300,
+    maximal_height = 600
+}
+
+data.raw["gui-style"]["default"].ic2gui_followrules_entry_frame = {
+    type = "frame_style",
+    parent = "shallow_frame",
+    top_padding = 0,
+    bottom_padding = 0,
+    left_padding = 0,
+    horizontally_stretchable = "on",
+    vertical_align = "center"
+}
+
+data.raw["gui-style"]["default"].ic2gui_followrules_draggable_space = {
+    type = "empty_widget_style",
+    parent = "draggable_space",
+    width = 24,
+    height = 40,
+    right_margin = 8
+}
+
+data.raw["gui-style"]["default"].ic2gui_followrules_detail_label = {
+    type = "label_style",
+    single_line = false,
+    ignored_by_search = true,
+    bottom_margin = -4,
+    maximal_width = 400
+}
+
+data.raw["gui-style"]["default"].ic2gui_followrules_detail_label_last = {
+    type = "label_style",
+    parent = "ic2gui_followrules_detail_label",
+    bottom_margin = 4
+}
+
+data.raw["gui-style"]["default"].ic2gui_followrules_detail_label_semibold = {
+    type = "label_style",
+    parent = "semibold_caption_label",
+    single_line = false,
+    bottom_margin = -4,
+    maximal_width = 400
+}
+
+data.raw["gui-style"]["default"].ic2gui_followrules_order_label = {
+    type = "label_style",
+    parent = "semibold_caption_label",
+    single_line = true,
+    right_margin = 8
+}

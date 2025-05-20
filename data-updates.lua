@@ -22,14 +22,18 @@ local function add_script_effect(name, accessor)
     accessor().created_effect = effects_set
 end
 
-for proto_name in pairs(data.raw["cargo-pod"]) do
-    add_script_effect(const.name_trigger_check_cargo_pod_follow, function ()
-        return data.raw["cargo-pod"][proto_name]
-    end)
+if data.raw["cargo-pod"] ~= nil then
+    for proto_name in pairs(data.raw["cargo-pod"]) do
+        add_script_effect(const.name_trigger_check_cargo_pod_follow, function ()
+            return data.raw["cargo-pod"][proto_name]
+        end)
+    end
 end
 
-for proto_name in pairs(data.raw["plant"]) do
-    add_script_effect(const.name_trigger_check_cargo_pod_follow, function ()
-        return data.raw["plant"][proto_name]
-    end)
+if data.raw["plant"] ~= nil then
+    for proto_name in pairs(data.raw["plant"]) do
+        add_script_effect(const.name_trigger_check_cargo_pod_follow, function ()
+            return data.raw["plant"][proto_name]
+        end)
+    end
 end

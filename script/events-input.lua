@@ -4,7 +4,7 @@ local focus_behavior = require("focus-behavior")
 local focus_select = require("focus-select")
 local utility = require("utility")
 
-local gui_follow_behavior = require("gui.follow-rules")
+local gui_follow_rules = require("gui.follow-rules")
 
 --- @param event EventData.on_player_selected_area
 local function start_item_cam(event)
@@ -64,10 +64,13 @@ end)
 
 script.on_event(defines.events.on_player_cursor_stack_changed, function (event)
     local player = game.get_player(event.player_index)
-    if player == nil or player.cursor_stack == nil
+    if player == nil
         then return end
 
-    local is_select_shortcut = player.cursor_stack.name == const.name_selection_item
+    local is_select_shortcut =
+        player.cursor_stack ~= nil
+        and player.cursor_stack.valid_for_read
+        and player.cursor_stack.name == const.name_selection_item
     player.set_shortcut_toggled(const.name_shortcut, is_select_shortcut)
 end)
 
@@ -84,9 +87,9 @@ script.on_event(defines.events.on_lua_shortcut, function (event)
     if player == nil
         then return end
     if not player.is_shortcut_toggled(const.name_options_shortcut) then
-        gui_follow_behavior.open_for(player)
+        gui_follow_rules.open_for(player)
     else
-        gui_follow_behavior.close_for(player.index)
+        gui_follow_rules.close_for(player.index)
     end
 end)
 

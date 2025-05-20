@@ -165,6 +165,38 @@ function utility.filtered(arr, f_fn)
     return ret
 end
 
+--- @generic T
+--- @param arr table<string, any>|LuaCustomTable<string, any>
+--- @param m_fn fun(entry: string, entry_value: any): T?
+--- @return T[]
+function utility.keys_mapped(arr, m_fn)
+    local ret = {}
+    for entry, entry_value in pairs(arr) do
+        local ret_entry = m_fn(entry, entry_value)
+        if ret_entry ~= nil then
+            table.insert(ret, ret_entry)
+        end
+    end
+    return ret
+end
+
+--- @generic T
+--- @param arr table<string, any>|LuaCustomTable<string, any>
+--- @param m_fn fun(entry: string, entry_value: any): T[]?
+--- @return T[]
+function utility.keys_mapped_flattened(arr, m_fn)
+    local ret = {}
+    for entry, entry_value in pairs(arr) do
+        local ret_entry = m_fn(entry, entry_value)
+        if ret_entry ~= nil then
+            for _, x in ipairs(ret_entry) do
+                table.insert(ret, x)
+            end
+        end
+    end
+    return ret
+end
+
 --- @generic T, U
 --- @param arr T[]
 --- @param m_fn fun(entry: T): U?

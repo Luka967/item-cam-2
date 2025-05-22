@@ -199,12 +199,12 @@ end
 
 --- @generic T, U
 --- @param arr T[]
---- @param m_fn fun(entry: T): U?
+--- @param m_fn fun(entry: T, idx: integer): U?
 --- @return U[]
 function utility.mapped(arr, m_fn)
     local ret = {}
-    for _, entry in ipairs(arr) do
-        local ret_entry = m_fn(entry)
+    for idx, entry in ipairs(arr) do
+        local ret_entry = m_fn(entry, idx)
         if ret_entry ~= nil then
             table.insert(ret, ret_entry)
         end
@@ -256,7 +256,7 @@ end
 
 --- @generic T, U
 --- @param arr T[]
---- @param d_fn fun(entry: T, idx: number): number?, U?
+--- @param d_fn fun(entry: T, idx: integer): number?, U?
 --- @return T?, U?
 function utility.minimum_of(arr, d_fn)
     if arr == nil

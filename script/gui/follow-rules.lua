@@ -1,7 +1,13 @@
+local util = require("util")
+
 --- @module "const"
 local const = require("__item-cam-2__.script.const")
 --- @module "utility"
 local utility = require("__item-cam-2__.script.utility")
+--- @module "state"
+local state = require("__item-cam-2__.script.state")
+--- @module "gui-custom"
+local gui_custom = require("__item-cam-2__.script.gui-custom")
 --- @module "gui-generator"
 local gui_generator = require("__item-cam-2__.script.gui-generator")
 
@@ -100,7 +106,8 @@ local function filter_mining_results(elem_value)
     return utility.mapped(mineable.products, map_product_to_filter)
 end
 
-local function construct_item_select_crafter()
+--- @param existing FollowRuleItemOutOfCrafter
+local function construct_item_select_crafter(existing)
     --- @type CustomGuiElement[]
     return {{
         type = "label",
@@ -109,7 +116,12 @@ local function construct_item_select_crafter()
         type = "choose-elem-button",
         name = "rule-crafter-entity",
         elem_type = "entity-with-quality",
-        elem_filters = {{filter = "crafting-machine"}}
+        elem_filters = {{filter = "crafting-machine"}},
+        postfix = function (elem)
+            if existing == nil
+                then return end
+            elem.elem_value = existing.entity
+        end
     }, {
         type = "label",
         caption = "crafted"
@@ -117,7 +129,14 @@ local function construct_item_select_crafter()
         type = "choose-elem-button",
         name = "rule-crafter-recipe",
         enabled = false,
-        elem_type = "recipe-with-quality"
+        elem_type = "recipe-with-quality",
+        postfix = function (elem)
+            if existing == nil
+                then return end
+            elem.elem_value = existing.recipe
+            elem.elem_filters = filter_crafter_recipe(existing.entity)
+            elem.enabled = existing.entity ~= nil
+        end
     }, {
         type = "label",
         caption = ", then follow first"
@@ -125,11 +144,19 @@ local function construct_item_select_crafter()
         type = "choose-elem-button",
         name = "rule-target",
         enabled = false,
-        elem_type = "item-with-quality"
+        elem_type = "item-with-quality",
+        postfix = function (elem)
+            if existing == nil
+                then return end
+            elem.elem_value = existing.target
+            elem.elem_filters = filter_crafter_target(existing.recipe)
+            elem.enabled = existing.recipe ~= nil
+        end
     }}
 end
 
-local function construct_item_select_out_of_container()
+--- @param existing FollowRuleItemOutOfContainer
+local function construct_item_select_out_of_container(existing)
     --- @type CustomGuiElement[]
     return {{
         type = "label",
@@ -138,7 +165,12 @@ local function construct_item_select_out_of_container()
         type = "choose-elem-button",
         name = "rule-container-entity",
         elem_type = "entity-with-quality",
-        elem_filters = container_filter
+        elem_filters = container_filter,
+        postfix = function (elem)
+            if existing == nil
+                then return end
+            elem.elem_value = existing.entity
+        end
     }, {
         type = "label",
         caption = ", then follow first"
@@ -146,14 +178,70 @@ local function construct_item_select_out_of_container()
         type = "choose-elem-button",
         name = "rule-target",
         enabled = false,
-        elem_type = "item-with-quality"
+        elem_type = "item-with-quality",
+        postfix = function (elem)
+            if existing == nil
+                then return end
+            elem.elem_value = existing.target
+            elem.enabled = existing.entity ~= nil
+        end
     }, {
         type = "label",
         caption = "taken out"
     }}
 end
 
-local function construct_item_select_plant_result()
+--- @param existing FollowRuleItemFromResource
+local function construct_item_select_resource_result(existing)
+    --- @type CustomGuiElement[]
+    return {{
+        type = "label",
+        caption = "If"
+    }, {
+        type = "choose-elem-button",
+        name = "rule-mining-result-entity",
+        elem_type = "entity-with-quality",
+        elem_filters = {{filter = "type", type = "mining-drill"}},
+        postfix = function (elem)
+            if existing == nil
+                then return end
+            elem.elem_value = existing.entity
+        end
+    }, {
+        type = "label",
+        caption = "mined"
+    }, {
+        type = "choose-elem-button",
+        name = "rule-mining-result-resource",
+        enabled = false,
+        elem_type = "entity",
+        postfix = function (elem)
+            if existing == nil
+                then return end
+            elem.elem_value = existing.resource
+            elem.elem_filters = filter_mining_categories(existing.entity)
+            elem.enabled = existing.entity ~= nil
+        end
+    }, {
+        type = "label",
+        caption = ", then follow first"
+    }, {
+        type = "choose-elem-button",
+        name = "rule-target",
+        enabled = false,
+        elem_type = "item-with-quality",
+        postfix = function (elem)
+            if existing == nil
+                then return end
+            elem.elem_value = existing.target
+            elem.elem_filters = filter_mining_results(existing.resource)
+            elem.enabled = existing.resource ~= nil
+        end
+    }}
+end
+
+--- @param existing FollowRuleItemFromPlant
+local function construct_item_select_plant_result(existing)
     --- @type CustomGuiElement[]
     return {{
         type = "label",
@@ -163,6 +251,11 @@ local function construct_item_select_plant_result()
         name = "rule-plant-result-entity",
         elem_type = "entity",
         elem_filters = {{filter = "type", type = "plant"}},
+        postfix = function (elem)
+            if existing == nil
+                then return end
+            elem.elem_value = existing.entity
+        end
     }, {
         type = "label",
         caption = "got mined, then follow first"
@@ -170,42 +263,29 @@ local function construct_item_select_plant_result()
         type = "choose-elem-button",
         name = "rule-target",
         enabled = false,
-        elem_type = "item-with-quality"
+        elem_type = "item-with-quality",
+        postfix = function (elem)
+            if existing == nil
+                then return end
+            elem.elem_value = existing.target
+            elem.elem_filters = filter_mining_results(existing.entity)
+            elem.enabled = not not existing.entity
+        end
     }}
 end
 
-local function construct_item_select_mining_result()
-    --- @type CustomGuiElement[]
-    return {{
-        type = "label",
-        caption = "If"
-    }, {
-        type = "choose-elem-button",
-        name = "rule-mining-result-entity",
-        elem_type = "entity-with-quality",
-        elem_filters = {{filter = "type", type = "mining-drill"}}
-    }, {
-        type = "label",
-        caption = "mined"
-    }, {
-        type = "choose-elem-button",
-        name = "rule-mining-result-resource",
-        enabled = false,
-        elem_type = "entity"
-    }, {
-        type = "label",
-        caption = ", then follow first"
-    }, {
-        type = "choose-elem-button",
-        name = "rule-target",
-        enabled = false,
-        elem_type = "item-with-quality"
-    }}
-end
+local constructors_mapped = {
+    ["item-out-of-crafter"] = construct_item_select_crafter,
+    ["item-out-of-container"] = construct_item_select_out_of_container,
+    ["item-from-resource"] = construct_item_select_resource_result,
+    ["item-from-plant"] = construct_item_select_plant_result,
+}
 
+--- @param rule_entry FollowRule
 --- @param idx number
---- @param kind fun(): CustomGuiElement[]
-local function construct_item_select(idx, kind)
+local function construct_item_select(rule_entry, idx)
+    local entry_generated = constructors_mapped[rule_entry.type](rule_entry)
+
     --- @type CustomGuiElement
     local ret = {
         type = "frame",
@@ -213,13 +293,13 @@ local function construct_item_select(idx, kind)
         style = "ic2gui_followrules_entry_frame",
         children = {{
             type = "label",
+            name = "rule-index",
             style = "ic2gui_followrules_order_label",
             caption = "#"..idx
         }},
         tags = {idx = idx}
     }
-    local merging = kind()
-    for _, entry in ipairs(merging) do
+    for _, entry in ipairs(entry_generated) do
         table.insert(ret.children, entry)
     end
 
@@ -242,8 +322,6 @@ local function construct_item_select(idx, kind)
         table.insert(ret.children, entry)
     end
 
-    -- TODO: Delete button
-
     return ret
 end
 
@@ -252,122 +330,30 @@ local add_button = {
     type = "drop-down",
     style = "ic2gui_followrules_entry_add_button",
     name = "add-rule",
-    caption = "+ Add rule",
     items = {
-        "Test 1",
-        "Test 2",
-        "Test 3",
-    }
+        "+ Add rule",
+        "When crafter finished recipe",
+        "When taken out of container",
+        "When resource node mined",
+        "When plant mined"
+    },
+    selected_index = 1
 }
 
-function gui_follow_rules.register_event_handlers()
-    gui_generator.register_event_handlers(gui_follow_rules.gid, {{
-        name = gui_follow_rules.gid,
-        closed = function (event)
-            gui_follow_rules.close_for(event.player_index)
-        end
-    }, {
-        name = "action-row-discard",
-        click = function (event)
-            gui_follow_rules.close_for(event.player_index)
-            game.print("discard")
-        end
-    }, {
-        name = "action-row-save",
-        click = function (event)
-            gui_follow_rules.close_for(event.player_index)
-            game.print("save")
-        end
-    }, {
-        name = "add-rule",
-        selection_state_changed = function (event)
-            game.print("add rule")
-            event.element.selected_index = 0
-        end
-    }, {
-        name = "delete-rule",
-        click = function (event)
-            local idx = event.element.parent.tags.idx
-            --- @cast idx number
-            event.element.parent.destroy()
-            game.print("delete "..idx)
-        end
-    }, {
-        name = "rule-crafter-entity",
-        elem_changed = function (event)
-            local crafter_pick = event.element.elem_value
-            --- @cast crafter_pick PrototypeWithQuality
-
-            local recipe_elem = event.element.parent["rule-crafter-recipe"]
-            recipe_elem.enabled = crafter_pick ~= nil
-            recipe_elem.elem_value = nil
-            recipe_elem.elem_filters = filter_crafter_recipe(crafter_pick)
-
-            local target_elem = event.element.parent["rule-target"]
-            target_elem.enabled = false
-            target_elem.elem_value = nil
-        end
-    }, {
-        name = "rule-crafter-recipe",
-        elem_changed = function (event)
-            local recipe_pick = event.element.elem_value
-            --- @cast recipe_pick PrototypeWithQuality
-
-            local target_elem = event.element.parent["rule-target"]
-            target_elem.enabled = recipe_pick ~= nil
-            target_elem.elem_value = nil
-            target_elem.elem_filters = filter_crafter_target(recipe_pick)
-        end
-    }, {
-        name = "rule-container-entity",
-        elem_changed = function (event)
-            local entity_pick = event.element.elem_value
-            local target_elem = event.element.parent["rule-target"]
-            target_elem.enabled = entity_pick ~= nil
-            target_elem.elem_value = nil
-        end
-    }, {
-        name = "rule-plant-result-entity",
-        elem_changed = function (event)
-            local entity_pick = event.element.elem_value
-            --- @cast entity_pick PrototypeWithQuality
-
-            local target_elem = event.element.parent["rule-target"]
-            target_elem.enabled = entity_pick ~= nil
-            target_elem.elem_value = nil
-            target_elem.elem_filters = filter_mining_results(entity_pick)
-        end
-    }, {
-        name = "rule-mining-result-entity",
-        elem_changed = function (event)
-            local drill_pick = event.element.elem_value
-            --- @cast drill_pick PrototypeWithQuality
-
-            local resource_elem = event.element.parent["rule-mining-result-resource"]
-            resource_elem.enabled = drill_pick ~= nil
-            resource_elem.elem_value = nil
-            resource_elem.elem_filters = filter_mining_categories(drill_pick)
-
-            local target_elem = event.element.parent["rule-target"]
-            target_elem.enabled = false
-            target_elem.elem_value = nil
-        end
-    }, {
-        name = "rule-mining-result-resource",
-        elem_changed = function (event)
-            local resource_pick = event.element.elem_value
-            --- @cast resource_pick string
-
-            local target_elem = event.element.parent["rule-target"]
-            target_elem.enabled = resource_pick ~= nil
-            target_elem.elem_value = nil
-            target_elem.elem_filters = filter_mining_results(resource_pick)
-        end
-    }})
-end
+--- @class CustomGuiFollowRulesState
+--- @field player LuaPlayer
+--- @field modified? boolean
+--- @field original_rules? FollowRule[]
+--- @field modified_rules FollowRule[]
 
 --- @param player LuaPlayer
 function gui_follow_rules.open_for(player)
+    local original_rules = state.follow_rules[player.index]
+    local modified_rules = original_rules and util.copy(original_rules) or {}
+
+    local scroll_pane_children = utility.mapped(modified_rules, construct_item_select)
+    table.insert(scroll_pane_children, add_button)
+
     player.opened = gui_generator.generate_at(player.gui.screen, {
         gid = gui_follow_rules.gid,
         is_window_root = true,
@@ -402,14 +388,8 @@ function gui_follow_rules.open_for(player)
             type = "scroll-pane",
             style = "ic2gui_followrules_entry_list_scroll",
             vertical_scroll_policy = "always",
-            children = {
-                construct_item_select(1, construct_item_select_plant_result),
-                construct_item_select(2, construct_item_select_crafter),
-                construct_item_select(3, construct_item_select_crafter),
-                construct_item_select(4, construct_item_select_out_of_container),
-                construct_item_select(5, construct_item_select_mining_result),
-                add_button
-            }
+            horizontal_scroll_policy = "never",
+            children = scroll_pane_children
         }, {
             type = "flow",
             direction = "horizontal",
@@ -435,6 +415,209 @@ function gui_follow_rules.open_for(player)
         }}
     })
     player.set_shortcut_toggled(const.name_options_shortcut, true)
+
+    local gui_state = gui_custom.get_state(player.index, gui_follow_rules.gid)
+    gui_state.original_rules = original_rules
+    gui_state.modified_rules = modified_rules
+end
+
+--- @param scroll_pane LuaGuiElement
+local function update_indices(scroll_pane)
+    for idx, child in ipairs(scroll_pane.children) do
+        if child.name == "add-rule"
+            then break end
+        child["rule-index"].caption = "#"..idx
+    end
+end
+
+function gui_follow_rules.register_event_handlers()
+    gui_generator.register_event_handlers(gui_follow_rules.gid, {{
+        name = gui_follow_rules.gid,
+        --- @param gui_state CustomGuiFollowRulesState
+        closed = function (event, gui_state)
+            local modified = gui_state.modified or false
+            game.print("discard "..(modified and "modified" or "not modified"))
+            gui_follow_rules.close_for(event.player_index)
+        end
+    }, {
+        name = "action-row-discard",
+        --- @param gui_state CustomGuiFollowRulesState
+        click = function (event, gui_state)
+            local modified = gui_state.modified or false
+            game.print("discard "..(modified and "modified" or "not modified"))
+            gui_follow_rules.close_for(event.player_index)
+        end
+    }, {
+        name = "action-row-save",
+        --- @param gui_state CustomGuiFollowRulesState
+        click = function (event, gui_state)
+            gui_follow_rules.close_for(event.player_index)
+            game.print("save")
+            state.follow_rules[event.player_index] = gui_state.modified_rules
+        end
+    }, {
+        name = "add-rule",
+        --- @param gui_state CustomGuiFollowRulesState
+        selection_state_changed = function (event, gui_state)
+            local selected_index = event.element.selected_index
+            if selected_index == 1
+                then return end
+            local new_rule_type = ({
+                [2] = "item-out-of-crafter",
+                [3] = "item-out-of-container",
+                [4] = "item-from-resource",
+                [5] = "item-from-plant"
+            })[selected_index]
+
+            local new_rule = {type = new_rule_type}
+            table.insert(gui_state.modified_rules, new_rule)
+
+            local new_index = event.element.get_index_in_parent()
+            local new_rule_elem = construct_item_select(new_rule, new_index)
+            new_rule_elem.index = new_index
+            gui_generator.generate_at(event.element.parent, new_rule_elem)
+
+            gui_state.modified = true
+            event.element.selected_index = 1
+        end
+    }, {
+        name = "delete-rule",
+        --- @param gui_state CustomGuiFollowRulesState
+        click = function (event, gui_state)
+            local idx = event.element.tags.idx
+            --- @cast idx number
+
+            -- Button -> rule frame -> scroll pane
+            local scroll_pane = event.element.parent.parent
+            --- @cast scroll_pane -nil
+            event.element.parent.destroy()
+            update_indices(scroll_pane)
+
+            gui_state.modified = true
+            table.remove(gui_state.modified_rules, idx)
+        end
+    }, {
+        name = "rule-crafter-entity",
+        --- @param gui_state CustomGuiFollowRulesState
+        elem_changed = function (event, gui_state)
+            local entity_pick = event.element.elem_value
+            --- @cast entity_pick PrototypeWithQuality
+
+            local recipe_elem = event.element.parent["rule-crafter-recipe"]
+            recipe_elem.enabled = entity_pick ~= nil
+            recipe_elem.elem_value = nil
+            recipe_elem.elem_filters = filter_crafter_recipe(entity_pick)
+
+            local target_elem = event.element.parent["rule-target"]
+            target_elem.enabled = false
+            target_elem.elem_value = nil
+
+            local rule_idx = event.element.parent.tags.idx
+            --- @cast rule_idx number
+            gui_state.modified = true
+            gui_state.modified_rules[rule_idx].entity = entity_pick
+        end
+    }, {
+        name = "rule-crafter-recipe",
+        --- @param gui_state CustomGuiFollowRulesState
+        elem_changed = function (event, gui_state)
+            local recipe_pick = event.element.elem_value
+            --- @cast recipe_pick PrototypeWithQuality
+
+            local target_elem = event.element.parent["rule-target"]
+            target_elem.enabled = recipe_pick ~= nil
+            target_elem.elem_value = nil
+            target_elem.elem_filters = filter_crafter_target(recipe_pick)
+
+            local rule_idx = event.element.parent.tags.idx
+            --- @cast rule_idx number
+            gui_state.modified = true
+            gui_state.modified_rules[rule_idx].recipe = recipe_pick
+        end
+    }, {
+        name = "rule-container-entity",
+        --- @param gui_state CustomGuiFollowRulesState
+        elem_changed = function (event, gui_state)
+            local entity_pick = event.element.elem_value
+            --- @cast entity_pick PrototypeWithQuality
+
+            local target_elem = event.element.parent["rule-target"]
+            target_elem.enabled = entity_pick ~= nil
+            target_elem.elem_value = nil
+
+            local rule_idx = event.element.parent.tags.idx
+            --- @cast rule_idx number
+            gui_state.modified = true
+            gui_state.modified_rules[rule_idx].entity = entity_pick
+        end
+    }, {
+        name = "rule-plant-result-entity",
+        --- @param gui_state CustomGuiFollowRulesState
+        elem_changed = function (event, gui_state)
+            local entity_pick = event.element.elem_value
+            --- @cast entity_pick string
+
+            local target_elem = event.element.parent["rule-target"]
+            target_elem.enabled = entity_pick ~= nil
+            target_elem.elem_value = nil
+            target_elem.elem_filters = filter_mining_results(entity_pick)
+
+            local rule_idx = event.element.parent.tags.idx
+            --- @cast rule_idx number
+            gui_state.modified = true
+            gui_state.modified_rules[rule_idx].entity = entity_pick
+        end
+    }, {
+        name = "rule-mining-result-entity",
+        --- @param gui_state CustomGuiFollowRulesState
+        elem_changed = function (event, gui_state)
+            local entity_pick = event.element.elem_value
+            --- @cast entity_pick PrototypeWithQuality
+
+            local resource_elem = event.element.parent["rule-mining-result-resource"]
+            resource_elem.enabled = entity_pick ~= nil
+            resource_elem.elem_value = nil
+            resource_elem.elem_filters = filter_mining_categories(entity_pick)
+
+            local target_elem = event.element.parent["rule-target"]
+            target_elem.enabled = false
+            target_elem.elem_value = nil
+
+            local rule_idx = event.element.parent.tags.idx
+            --- @cast rule_idx number
+            gui_state.modified = true
+            gui_state.modified_rules[rule_idx].entity = entity_pick
+        end
+    }, {
+        name = "rule-mining-result-resource",
+        --- @param gui_state CustomGuiFollowRulesState
+        elem_changed = function (event, gui_state)
+            local resource_pick = event.element.elem_value
+            --- @cast resource_pick string
+
+            local target_elem = event.element.parent["rule-target"]
+            target_elem.enabled = resource_pick ~= nil
+            target_elem.elem_value = nil
+            target_elem.elem_filters = filter_mining_results(resource_pick)
+
+            local rule_idx = event.element.parent.tags.idx
+            --- @cast rule_idx number
+            gui_state.modified = true
+            gui_state.modified_rules[rule_idx].resource = resource_pick
+        end
+    }, {
+        name = "rule-target",
+        --- @param gui_state CustomGuiFollowRulesState
+        elem_changed = function (event, gui_state)
+            local item_pick = event.element.elem_value
+            --- @cast item_pick PrototypeWithQuality
+
+            local rule_idx = event.element.parent.tags.idx
+            --- @cast rule_idx number
+            gui_state.modified = true
+            gui_state.modified_rules[rule_idx].target = item_pick
+        end
+    }})
 end
 
 --- @param player_index number

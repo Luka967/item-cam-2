@@ -24,16 +24,16 @@ local function start_item_cam(event)
         then return end
 
     focus_behavior.start_following(new_focus)
-    state.focuses.set(event.player_index, new_focus)
+    state.focuses[event.player_index] = new_focus
 end
 
 --- @param player_idx integer
 local function stop_item_cam(player_idx)
-    local focus = state.focuses.get(player_idx)
+    local focus = state.focuses[player_idx]
     if focus == nil
         then return end
     focus_behavior.stop_following(focus)
-    state.focuses.set(player_idx, nil)
+    state.focuses[player_idx] = nil
 end
 
 --- @param event EventData.CustomInputEvent|EventData.on_lua_shortcut
@@ -42,7 +42,7 @@ local function toggle_item_cam_shortcut(event)
     if player == nil
         then return end
 
-    if state.focuses.get(event.player_index) ~= nil then
+    if state.focuses[event.player_index] ~= nil then
         stop_item_cam(event.player_index)
         return
     end

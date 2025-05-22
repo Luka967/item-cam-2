@@ -44,10 +44,10 @@ end)
 
 --- @param player_idx integer
 local function tick_one_focus(player_idx)
-    local focus = state.focuses.get(player_idx)
+    local focus = state.focuses[player_idx]
     if not focus.valid then
         utility.debug("ambiguous tick_one_focus call for player_idx "..player_idx.." whose focus is invalid")
-        state.focuses.set(player_idx, nil)
+        state.focuses[player_idx] = nil
         return
     end
 
@@ -62,7 +62,7 @@ local function tick_one_focus(player_idx)
         return
     end
 
-    state.focuses.set(player_idx, nil)
+    state.focuses[player_idx] = nil
     if not focus.controlling.valid
         then return end
     focus_behavior.stop_following(focus)
@@ -76,7 +76,7 @@ end
 script.on_event(defines.events.on_object_destroyed, function (event)
     if next_tick_registration_number ~= event.registration_number
         then return end
-    for player_idx in pairs(state.focuses.v) do
+    for player_idx in pairs(state.focuses) do
         tick_one_focus(player_idx)
     end
 

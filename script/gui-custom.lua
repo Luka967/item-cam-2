@@ -1,7 +1,7 @@
 --- @alias AnyGuiEventDefine defines.events.on_gui_checked_state_changed|defines.events.on_gui_click|defines.events.on_gui_closed|defines.events.on_gui_confirmed|defines.events.on_gui_elem_changed|defines.events.on_gui_hover|defines.events.on_gui_leave|defines.events.on_gui_location_changed|defines.events.on_gui_opened|defines.events.on_gui_selected_tab_changed|defines.events.on_gui_selection_state_changed|defines.events.on_gui_switch_state_changed|defines.events.on_gui_text_changed|defines.events.on_gui_value_changed
 --- @alias AnyGuiEvent EventData.on_gui_checked_state_changed|EventData.on_gui_click|EventData.on_gui_closed|EventData.on_gui_confirmed|EventData.on_gui_elem_changed|EventData.on_gui_hover|EventData.on_gui_leave|EventData.on_gui_location_changed|EventData.on_gui_opened|EventData.on_gui_selected_tab_changed|EventData.on_gui_selection_state_changed|EventData.on_gui_switch_state_changed|EventData.on_gui_text_changed|EventData.on_gui_value_changed
 
---- @alias CustomGuiEventHandler<T> fun(event: T, state: table, gid: string)
+--- @alias CustomGuiEventHandler<T> fun(event: T, gui_state: table, gid: string)
 
 --- @class CustomGuiEventHandlerTable
 --- @field checked_state_changed?    CustomGuiEventHandler<EventData.on_gui_checked_state_changed>

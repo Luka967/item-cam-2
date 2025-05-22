@@ -2,6 +2,30 @@ local const = require("const")
 local utility = require("utility")
 local watchdog = require("focus-watchdog")
 
+--- @class FollowRuleItemOutOfContainer
+--- @field type "item-out-of-container"
+--- @field entity? PrototypeWithQuality
+--- @field target? PrototypeWithQuality
+
+--- @class FollowRuleItemOutOfCrafter
+--- @field type "item-out-of-crafter"
+--- @field entity? PrototypeWithQuality
+--- @field recipe? PrototypeWithQuality
+--- @field target? PrototypeWithQuality
+
+--- @class FollowRuleItemFromResource
+--- @field type "item-from-resource"
+--- @field entity? PrototypeWithQuality
+--- @field resource? string
+--- @field target? PrototypeWithQuality
+
+--- @class FollowRuleItemFromPlant
+--- @field type "item-from-plant"
+--- @field entity? string
+--- @field target? PrototypeWithQuality
+
+--- @alias FollowRule FollowRuleItemOutOfContainer|FollowRuleItemOutOfCrafter|FollowRuleItemFromResource|FollowRuleItemFromPlant
+
 local transfer_to = {}
 
 --- @param surface LuaSurface

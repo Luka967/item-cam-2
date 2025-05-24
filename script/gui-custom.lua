@@ -11,7 +11,7 @@
 --- @field elem_changed?             CustomGuiEventHandler<EventData.on_gui_elem_changed>
 --- @field hover?                    CustomGuiEventHandler<EventData.on_gui_hover>
 --- @field leave?                    CustomGuiEventHandler<EventData.on_gui_leave>
------ @field location_changed?         CustomGuiEventHandler<EventData.on_gui_location_changed>
+-- --- @field location_changed?         CustomGuiEventHandler<EventData.on_gui_location_changed>
 --- @field opened?                   CustomGuiEventHandler<EventData.on_gui_opened>
 --- @field selected_tab_changed?     CustomGuiEventHandler<EventData.on_gui_selected_tab_changed>
 --- @field selection_state_changed?  CustomGuiEventHandler<EventData.on_gui_selection_state_changed>
@@ -62,7 +62,7 @@ end
 
 --- @param player_idx number
 --- @param gid string
---- @return table|nil
+--- @return table?
 function custom_gui.get_state(player_idx, gid)
     if not custom_gui_state[player_idx]
         then return end

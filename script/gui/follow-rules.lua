@@ -118,8 +118,6 @@ local function construct_item_select_crafter(existing)
         elem_type = "entity-with-quality",
         elem_filters = {{filter = "crafting-machine"}},
         postfix = function (elem)
-            if existing == nil
-                then return end
             elem.elem_value = existing.entity
         end
     }, {
@@ -131,8 +129,6 @@ local function construct_item_select_crafter(existing)
         enabled = false,
         elem_type = "recipe-with-quality",
         postfix = function (elem)
-            if existing == nil
-                then return end
             elem.elem_value = existing.recipe
             elem.elem_filters = filter_crafter_recipe(existing.entity)
             elem.enabled = existing.entity ~= nil
@@ -146,8 +142,6 @@ local function construct_item_select_crafter(existing)
         enabled = false,
         elem_type = "item-with-quality",
         postfix = function (elem)
-            if existing == nil
-                then return end
             elem.elem_value = existing.target
             elem.elem_filters = filter_crafter_target(existing.recipe)
             elem.enabled = existing.recipe ~= nil
@@ -167,8 +161,6 @@ local function construct_item_select_out_of_container(existing)
         elem_type = "entity-with-quality",
         elem_filters = container_filter,
         postfix = function (elem)
-            if existing == nil
-                then return end
             elem.elem_value = existing.entity
         end
     }, {
@@ -180,8 +172,6 @@ local function construct_item_select_out_of_container(existing)
         enabled = false,
         elem_type = "item-with-quality",
         postfix = function (elem)
-            if existing == nil
-                then return end
             elem.elem_value = existing.target
             elem.enabled = existing.entity ~= nil
         end
@@ -203,8 +193,6 @@ local function construct_item_select_resource_result(existing)
         elem_type = "entity-with-quality",
         elem_filters = {{filter = "type", type = "mining-drill"}},
         postfix = function (elem)
-            if existing == nil
-                then return end
             elem.elem_value = existing.entity
         end
     }, {
@@ -216,8 +204,6 @@ local function construct_item_select_resource_result(existing)
         enabled = false,
         elem_type = "entity",
         postfix = function (elem)
-            if existing == nil
-                then return end
             elem.elem_value = existing.resource
             elem.elem_filters = filter_mining_categories(existing.entity)
             elem.enabled = existing.entity ~= nil
@@ -231,8 +217,6 @@ local function construct_item_select_resource_result(existing)
         enabled = false,
         elem_type = "item-with-quality",
         postfix = function (elem)
-            if existing == nil
-                then return end
             elem.elem_value = existing.target
             elem.elem_filters = filter_mining_results(existing.resource)
             elem.enabled = existing.resource ~= nil
@@ -252,8 +236,6 @@ local function construct_item_select_plant_result(existing)
         elem_type = "entity",
         elem_filters = {{filter = "type", type = "plant"}},
         postfix = function (elem)
-            if existing == nil
-                then return end
             elem.elem_value = existing.entity
         end
     }, {
@@ -265,8 +247,6 @@ local function construct_item_select_plant_result(existing)
         enabled = false,
         elem_type = "item-with-quality",
         postfix = function (elem)
-            if existing == nil
-                then return end
             elem.elem_value = existing.target
             elem.elem_filters = filter_mining_results(existing.entity)
             elem.enabled = not not existing.entity

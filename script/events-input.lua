@@ -15,14 +15,16 @@ local function start_item_cam(event)
     if player == nil
         then return end
 
-    local closest_selection = focus_select(event.entities, utility.aabb_center(event.area))
+    player.clear_cursor()
+
+    local new_focus = focus_behavior.create(state.follow_rules[player.index])
+    focus_behavior.add_controlling_player(new_focus, player)
+
+    local closest_selection = focus_select(new_focus, event.entities, utility.aabb_center(event.area))
     if closest_selection == nil
         then return end
 
-    local new_focus = focus_behavior.acquire_target(player, closest_selection)
-    if new_focus == nil
-        then return end
-
+    focus_behavior.assign_target_inital(new_focus, closest_selection)
     focus_behavior.start_following(new_focus)
     state.focuses[event.player_index] = new_focus
 end

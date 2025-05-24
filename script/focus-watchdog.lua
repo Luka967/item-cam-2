@@ -1,34 +1,40 @@
 local utility = require("utility")
+local follow_rules = require("focus-follow-rules")
 
 --- @class FocusWatchdog
 --- @field type string
+--- @field valid boolean
 --- @field handle LuaEntity
 --- @field pin any
 --- @field item_wl? FocusItemWhitelist Future item lookup whitelist
 
 local create = {}
 
+--- @param focus FocusInstance
 --- @param entity LuaEntity
-function create.item_on_ground(entity)
+function create.item_on_ground(focus, entity)
     --- @type FocusWatchdog
     return {
         type = "item-on-ground",
+        valid = true,
         handle = entity,
         item_wl = {item = utility.item_stack_proto(entity.stack)}
     }
 end
 
+--- @param focus FocusInstance
 --- @param entity LuaEntity
 --- @param item ItemIDAndQualityIDPair
-function create.item_in_container(entity, item)
+function create.item_in_container(focus, entity, item)
     if entity.type == "rocket-silo"
-        then return create.item_in_rocket_silo(entity, item) end
+        then return create.item_in_rocket_silo(focus, entity, item) end
     if #entity.cargo_hatches > 0
-        then return create.item_in_container_with_cargo_hatches(entity, item) end
+        then return create.item_in_container_with_cargo_hatches(focus, entity, item) end
 
     --- @type FocusWatchdog
     return {
         type = "item-in-container",
+        valid = true,
         handle = entity,
         item_wl = {item = item}
     }
@@ -39,13 +45,15 @@ end
 --- @field id integer
 --- @field line_idx integer
 
+--- @param focus FocusInstance
 --- @param item_on_line DetailedItemOnLine
 --- @param line_idx integer
 --- @param belt_entity LuaEntity
-function create.item_on_belt(item_on_line, line_idx, belt_entity)
+function create.item_on_belt(focus, item_on_line, line_idx, belt_entity)
     --- @type FocusWatchdog
     return {
         type = "item-on-belt",
+        valid = true,
         handle = belt_entity,
         item_wl = {item = utility.item_stack_proto(item_on_line.stack)},
         --- @type PinItemOnBelt
@@ -57,13 +65,15 @@ function create.item_on_belt(item_on_line, line_idx, belt_entity)
     }
 end
 
+--- @param focus FocusInstance
 --- @param entity LuaEntity
-function create.item_in_inserter_hand(entity)
+function create.item_in_inserter_hand(focus, entity)
     assert(entity.held_stack.valid_for_read, "inserter has nothing in hand")
 
     --- @type FocusWatchdog
     return {
         type = "item-in-inserter-hand",
+        valid = true,
         handle = entity,
         item_wl = {item = utility.item_stack_proto(entity.held_stack)}
     }
@@ -74,11 +84,13 @@ end
 --- @field expected_products? string[]
 --- @field announced_change? boolean
 
+--- @param focus FocusInstance
 --- @param entity LuaEntity
-function create.item_in_crafting_machine(entity)
+function create.item_in_crafting_machine(focus, entity)
     --- @type FocusWatchdog
     return {
         type = "item-in-crafting-machine",
+        valid = true,
         handle = entity,
         --- @type PinItemInCraftingMachine
         pin = {
@@ -90,9 +102,10 @@ end
 --- @class PinItemHeldByRobot
 --- @field drop_target LuaEntity
 
+--- @param focus FocusInstance
 --- @param entity LuaEntity
 --- @param item ItemIDAndQualityIDPair
-function create.item_held_by_robot(entity, item)
+function create.item_held_by_robot(focus, entity, item)
     local first_order = entity.robot_order_queue[1]
     local drop_target = first_order.target or first_order.secondary_target
     assert(drop_target, "robot has no drop target")
@@ -100,6 +113,7 @@ function create.item_held_by_robot(entity, item)
     --- @type FocusWatchdog
     return {
         type = "item-held-by-robot",
+        valid = true,
         handle = entity,
         item_wl = {item = item},
         --- @type PinItemHeldByRobot
@@ -112,8 +126,9 @@ end
 --- @class PinItemComingFromMiningDrill
 --- @field tick_should_mine integer
 
+--- @param focus FocusInstance
 --- @param entity LuaEntity
-function create.item_coming_from_mining_drill(entity)
+function create.item_coming_from_mining_drill(focus, entity)
     local mining_target = entity.mining_target
     assert(mining_target, "drill has no mining_target")
 
@@ -133,6 +148,7 @@ function create.item_coming_from_mining_drill(entity)
     --- @type FocusWatchdog
     return {
         type = "item-coming-from-mining-drill",
+        valid = true,
         handle = entity,
         item_wl = {
             items = utility.products_filtered(mining_products, {items = true})
@@ -144,23 +160,27 @@ function create.item_coming_from_mining_drill(entity)
     }
 end
 
+--- @param focus FocusInstance
 --- @param entity LuaEntity
 --- @param item ItemIDAndQualityIDPair
-function create.item_in_rocket_silo(entity, item)
+function create.item_in_rocket_silo(focus, entity, item)
     --- @type FocusWatchdog
     return {
         type = "item-in-rocket-silo",
+        valid = true,
         handle = entity,
         item_wl = {item = item}
     }
 end
 
+--- @param focus FocusInstance
 --- @param entity LuaEntity
 --- @param item ItemIDAndQualityIDPair
-function create.item_in_rocket(entity, item)
+function create.item_in_rocket(focus, entity, item)
     --- @type FocusWatchdog
     return {
         type = "item-in-rocket",
+        valid = true,
         handle = entity,
         item_wl = {item = item}
     }
@@ -169,12 +189,14 @@ end
 --- @class PinItemInCargoPod
 --- @field drop_target? LuaEntity
 
+--- @param focus FocusInstance
 --- @param entity LuaEntity
 --- @param item ItemIDAndQualityIDPair
-function create.item_in_cargo_pod(entity, item)
+function create.item_in_cargo_pod(focus, entity, item)
     --- @type FocusWatchdog
     return {
         type = "item-in-cargo-pod",
+        valid = true,
         handle = entity,
         item_wl = {item = item},
         --- @type PinItemInCargoPod
@@ -182,33 +204,39 @@ function create.item_in_cargo_pod(entity, item)
     }
 end
 
+--- @param focus FocusInstance
 --- @param entity LuaEntity
 --- @param item ItemIDAndQualityIDPair
-function create.item_in_container_with_cargo_hatches(entity, item)
+function create.item_in_container_with_cargo_hatches(focus, entity, item)
     --- @type FocusWatchdog
     return {
         type = "item-in-container-with-cargo-hatches",
+        valid = true,
         handle = entity,
         item_wl = {item = item}
     }
 end
 
+--- @param focus FocusInstance
 --- @param entity LuaEntity
-function create.item_coming_from_asteroid_collector(entity)
+function create.item_coming_from_asteroid_collector(focus, entity)
     --- @type FocusWatchdog
     return {
         type = "item-coming-from-asteroid-collector",
+        valid = true,
         handle = entity,
         item_wl = utility.__no_wl
     }
 end
 
+--- @param focus FocusInstance
 --- @param entity LuaEntity
 --- @param item ItemIDAndQualityIDPair
-function create.seed_in_agricultural_tower(entity, item)
+function create.seed_in_agricultural_tower(focus, entity, item)
     --- @type FocusWatchdog
     return {
         type = "seed-in-agricultural-tower",
+        valid = true,
         handle = entity,
         item_wl = {item = item}
     }
@@ -218,8 +246,9 @@ end
 --- @field last_tick_towers_nearby LuaEntity[]
 --- @field last_tick_crane_destinations MapPosition[]
 
+--- @param focus FocusInstance
 --- @param entity LuaEntity
-function create.plant_growing(entity)
+function create.plant_growing(focus, entity)
     local mine_products = entity.prototype.mineable_properties.products
     assert(mine_products, "plant has no products")
 
@@ -231,6 +260,7 @@ function create.plant_growing(entity)
     --- @type FocusWatchdog
     return {
         type = "plant-growing",
+        valid = true,
         handle = entity,
         item_wl = {
             items = utility.products_filtered(mine_products, {items = true})
@@ -243,21 +273,25 @@ function create.plant_growing(entity)
     }
 end
 
+--- @param focus FocusInstance
 --- @param entity LuaEntity
-function create.item_coming_from_agricultural_tower(entity)
+function create.item_coming_from_agricultural_tower(focus, entity)
     --- @type FocusWatchdog
     return {
         type = "item-coming-from-agricultural-tower",
+        valid = true,
         handle = entity,
         item_wl = utility.__no_wl
     }
 end
 
---- @param entity any
-function create.end_lab(entity)
+--- @param focus FocusInstance
+--- @param entity LuaEntity
+function create.end_lab(focus, entity)
     --- @type FocusWatchdog
     return {
         type = "end-lab",
+        valid = true,
         handle = entity,
         item_wl = utility.__no_wl
     }

@@ -1,38 +1,16 @@
 local const = require("const")
 local utility = require("utility")
 local watchdog = require("focus-watchdog")
-
---- @class FollowRuleItemOutOfContainer
---- @field type "item-out-of-container"
---- @field entity? PrototypeWithQuality
---- @field target? PrototypeWithQuality
-
---- @class FollowRuleItemOutOfCrafter
---- @field type "item-out-of-crafter"
---- @field entity? PrototypeWithQuality
---- @field recipe? PrototypeWithQuality
---- @field target? PrototypeWithQuality
-
---- @class FollowRuleItemFromResource
---- @field type "item-from-resource"
---- @field entity? PrototypeWithQuality
---- @field resource? string
---- @field target? PrototypeWithQuality
-
---- @class FollowRuleItemFromPlant
---- @field type "item-from-plant"
---- @field entity? string
---- @field target? PrototypeWithQuality
-
---- @alias FollowRule FollowRuleItemOutOfContainer|FollowRuleItemOutOfCrafter|FollowRuleItemFromResource|FollowRuleItemFromPlant
+local follow_rules = require("focus-follow-rules")
 
 local transfer_to = {}
 
+--- @param focus FocusInstance
 --- @param surface LuaSurface
 --- @param search_position MapPosition
 --- @param item_wl FocusItemWhitelist
 --- @return FocusWatchdog?
-function transfer_to.item_on_ground(surface, search_position, item_wl)
+function transfer_to.item_on_ground(focus, surface, search_position, item_wl)
     utility.debug_pos(surface, search_position, const.__dc_item_entity_seek)
 
     local candidates = surface.find_entities_filtered({
@@ -44,7 +22,7 @@ function transfer_to.item_on_ground(surface, search_position, item_wl)
         then return end
     for _, candidate in ipairs(candidates) do
         if utility.is_item_filtered(candidate.stack, item_wl) then
-            return watchdog.create.item_on_ground(candidates[1])
+            return watchdog.create.item_on_ground(focus, candidates[1])
         end
     end
 end
@@ -54,13 +32,14 @@ end
 --- @field target? LuaEntity
 --- @field swinging_towards? boolean
 
+--- @param focus FocusInstance
 --- @param surface LuaSurface
 --- @param force? ForceID
 --- @param search_area BoundingBox
 --- @param ref_pos MapPosition
 --- @param item_wl FocusItemWhitelist
 --- @param restrictions WatchInserterCandidateRestrictions
-function transfer_to.inserter_nearby(surface, force, search_area, ref_pos, item_wl, restrictions)
+function transfer_to.inserter_nearby(focus, surface, force, search_area, ref_pos, item_wl, restrictions)
     utility.debug_area(surface, search_area, const.__dc_inserter_seek)
 
     local best_guess = utility.minimum_of(surface.find_entities_filtered({
@@ -93,13 +72,14 @@ function transfer_to.inserter_nearby(surface, force, search_area, ref_pos, item_
 
     if best_guess ~= nil then
         utility.debug_pos(surface, best_guess.position, const.__dc_min_pick)
-        return watchdog.create.item_in_inserter_hand(best_guess)
+        return watchdog.create.item_in_inserter_hand(focus, best_guess)
     end
 end
 
+--- @param focus FocusInstance
 --- @param target_belt_entity LuaEntity
 --- @param item_wl FocusItemWhitelist
-function transfer_to.newest_item_on_belt(target_belt_entity, item_wl)
+function transfer_to.newest_item_on_belt(focus, target_belt_entity, item_wl)
     local best_guess, line_idx = utility.minimum_on_belt(target_belt_entity, function (candidate, line_idx)
         utility.debug_item_on_line(candidate, line_idx, target_belt_entity, const.__dc_min_cand)
         if not utility.is_item_filtered(candidate.stack, item_wl)
@@ -111,7 +91,7 @@ function transfer_to.newest_item_on_belt(target_belt_entity, item_wl)
 
     if best_guess and line_idx then
         utility.debug_item_on_line(best_guess, line_idx, target_belt_entity, const.__dc_min_pick)
-        return watchdog.create.item_on_belt(best_guess, line_idx, target_belt_entity)
+        return watchdog.create.item_on_belt(focus, best_guess, line_idx, target_belt_entity)
     end
 end
 
@@ -119,12 +99,13 @@ end
 --- @field source? LuaEntity
 --- @field target? LuaEntity
 
+--- @param focus FocusInstance
 --- @param surface LuaSurface
 --- @param force? ForceID
 --- @param search_area BoundingBox
 --- @param item_wl FocusItemWhitelist
 --- @param restrictions WatchLoaderCandidateRestrictions
-function transfer_to.loader_nearby(surface, force, search_area, item_wl, restrictions)
+function transfer_to.loader_nearby(focus, surface, force, search_area, item_wl, restrictions)
     utility.debug_area(surface, search_area, const.__dc_loader_seek)
 
     return utility.first(surface.find_entities_filtered({
@@ -142,16 +123,17 @@ function transfer_to.loader_nearby(surface, force, search_area, item_wl, restric
             or candidate.loader_container ~= restrictions.target
         ) then return end
 
-        return transfer_to.newest_item_on_belt(candidate, item_wl)
+        return transfer_to.newest_item_on_belt(focus, candidate, item_wl)
     end)
 end
 
+--- @param focus FocusInstance
 --- @param surface LuaSurface
 --- @param force? ForceID
 --- @param search_area BoundingBox
 --- @param ref_pos MapPosition
 --- @param item_wl FocusItemWhitelist
-function transfer_to.robot_nearby(surface, force, search_area, ref_pos, item_wl)
+function transfer_to.robot_nearby(focus, surface, force, search_area, ref_pos, item_wl)
     utility.debug_area(surface, search_area, const.__dc_robot_seek)
 
     local best_guess, its_item_stack = utility.minimum_of(surface.find_entities_filtered({
@@ -182,26 +164,39 @@ function transfer_to.robot_nearby(surface, force, search_area, ref_pos, item_wl)
         utility.debug_pos(surface, best_guess.position, const.__dc_min_pick)
 
         return watchdog.create.item_held_by_robot(
+            focus,
             best_guess,
             utility.item_stack_proto(its_item_stack)
         )
     end
 end
 
+--- @param focus FocusInstance
 --- @param entity LuaEntity
 --- @param item_wl FocusItemWhitelist
-function transfer_to.next(entity, item_wl)
+function transfer_to.next(focus, entity, item_wl)
     local entity_type = entity.type
     if const.is_belt[entity_type] then
-        return transfer_to.newest_item_on_belt(entity, item_wl)
+        return transfer_to.newest_item_on_belt(focus, entity, item_wl)
     end
     if entity_type == "inserter" then
-        return watchdog.create.item_in_inserter_hand(entity)
+        return watchdog.create.item_in_inserter_hand(focus, entity)
     end
     if const.is_crafting_machine[entity_type] then
-        return watchdog.create.item_in_crafting_machine(entity)
+        item_wl = follow_rules.seek_matching_item_wl(focus, {
+            type = "item-out-of-crafter",
+            entity = {name = entity.name, quality = entity.quality.name},
+            recipe = utility.crafter_recipe(entity)
+        }) or item_wl
+
+        return watchdog.create.item_in_crafting_machine(focus, entity)
     end
     if const.container_inventory_idx[entity_type] then
+        item_wl = follow_rules.seek_matching_item_wl(focus, {
+            type = "item-out-of-container",
+            entity = {name = entity.name, quality = entity.quality.name},
+        }) or item_wl
+
         assert(item_wl.item or item_wl.items, "expected whitelist on item")
 
         local inventory = entity.get_inventory(const.container_inventory_idx[entity_type])
@@ -209,11 +204,16 @@ function transfer_to.next(entity, item_wl)
 
         local first_applicable_stack = utility.first_item_stack_filtered(inventory, item_wl)
         if first_applicable_stack ~= nil then
-            return watchdog.create.item_in_container(entity, utility.item_stack_proto(first_applicable_stack))
+            return watchdog.create.item_in_container(
+                focus,
+                entity,
+                utility.item_stack_proto(first_applicable_stack)
+            )
         end
 
         utility.debug("transfer_to.next: item from container was already taken by inserter")
         return transfer_to.inserter_nearby(
+            focus,
             entity.surface,
             entity.force,
             utility.aabb_expand(entity.bounding_box, const.inserter_search_d),
@@ -225,29 +225,30 @@ function transfer_to.next(entity, item_wl)
     if entity_type == "agricultural-tower" then
         -- Happens only when it's inputted into. Output is triggered independently
         assert(item_wl.item, "expected whitelist on item")
-        return watchdog.create.seed_in_agricultural_tower(entity, item_wl.item)
+        return watchdog.create.seed_in_agricultural_tower(focus, entity, item_wl.item)
     end
     if entity_type == "lab" then
-        return watchdog.create.end_lab(entity)
+        return watchdog.create.end_lab(focus, entity)
     end
     if entity_type == "item-entity" then
-        return watchdog.create.item_on_ground(entity)
+        return watchdog.create.item_on_ground(focus, entity)
     end
 end
 
+--- @param focus FocusInstance
 --- @param entity LuaEntity
 --- @param item_wl FocusItemWhitelist
-function transfer_to.drop_target(entity, item_wl)
+function transfer_to.drop_target(focus, entity, item_wl)
     if entity.prototype.vector_to_place_result == nil
         then return end
 
     local drop_target = entity.drop_target
     if drop_target == nil then
-        return transfer_to.item_on_ground(entity.surface, entity.drop_position, item_wl)
+        return transfer_to.item_on_ground(focus, entity.surface, entity.drop_position, item_wl)
     end
 
     if drop_target.type ~= "transport-belt" then
-        return transfer_to.next(drop_target, item_wl)
+        return transfer_to.next(focus, drop_target, item_wl)
     end
 
     -- Drop target is belt. Search only the proper lane
@@ -266,21 +267,23 @@ function transfer_to.drop_target(entity, item_wl)
     end)
 
     if best_guess and line_idx then
-        return watchdog.create.item_on_belt(best_guess, line_idx, drop_target)
+        return watchdog.create.item_on_belt(focus, best_guess, line_idx, drop_target)
     end
 end
 
+--- @param focus FocusInstance
 --- @param entity LuaEntity
 --- @param item_wl FocusItemWhitelist
 --- @param also_drop_target? boolean
-function transfer_to.taken_out_of_building(entity, item_wl, also_drop_target)
+function transfer_to.taken_out_of_building(focus, entity, item_wl, also_drop_target)
     utility.debug_area(entity.surface, entity.selection_box, const.__dc_bounding)
     local entity_box = utility.rotated_selection_box(entity)
     utility.debug_area(entity.surface, entity_box, const.__dc_bounding_real)
 
     return
-        (also_drop_target and transfer_to.drop_target(entity, item_wl))
+        (also_drop_target and transfer_to.drop_target(focus, entity, item_wl))
         or transfer_to.inserter_nearby(
+            focus,
             entity.surface,
             entity.force,
             utility.aabb_expand(entity_box, const.inserter_search_d),
@@ -288,12 +291,14 @@ function transfer_to.taken_out_of_building(entity, item_wl, also_drop_target)
             item_wl,
             {source = entity, swinging_towards = true}
         ) or transfer_to.loader_nearby(
+            focus,
             entity.surface,
             entity.force,
             utility.aabb_expand(entity_box, const.loader_search_d),
             item_wl,
             {source = entity}
         ) or transfer_to.robot_nearby(
+            focus,
             entity.surface,
             entity.force,
             utility.aabb_expand(entity_box, const.robot_search_d),

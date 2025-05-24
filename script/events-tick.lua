@@ -56,21 +56,16 @@ local function tick_one_focus(player_idx)
     end
 
     local last_type = focus.watching.type
-    if focus_behavior.update(focus) then
-        focus_behavior.update_location(focus)
-        focus.controlling.teleport(focus.smooth_position, focus.surface)
-        return
-    end
+    focus_behavior.update(focus)
 
-    state.focuses[player_idx] = nil
-    if not focus.controlling.valid
+    if focus.valid
         then return end
+    state.focuses[player_idx] = nil
     focus_behavior.stop_following(focus)
 
     local gps_tag = "[gps="..focus.position.x..","..focus.position.y..","..focus.surface.name.."]"
     local tell_str = "lost focus, last known was "..last_type.." at "..gps_tag
     utility.debug(tell_str)
-    focus.controlling.print(tell_str)
 end
 
 script.on_event(defines.events.on_object_destroyed, function (event)

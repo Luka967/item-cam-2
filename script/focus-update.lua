@@ -8,11 +8,12 @@ local tick_map = {}
 local environment_changed_map = {}
 
 tick_map["item-on-ground"] = function ()
-    return true
+    -- The item on ground ponders why it got kicked from the factory group chat.
 end
 --- @param focus FocusInstance
 handle_invalid_map["item-on-ground"] = function (focus)
     focus.watching = transfer_to.inserter_nearby(
+        focus,
         focus.surface,
         nil,
         utility.aabb_around(focus.position, const.inserter_search_d),
@@ -20,7 +21,6 @@ handle_invalid_map["item-on-ground"] = function (focus)
         focus.watching.item_wl,
         {swinging_towards = true, source = nil}
     )
-    return true
 end
 
 --- @type table<string, fun(handle: LuaEntity): ((LuaEntity | LuaEntity[])[])>
@@ -74,7 +74,7 @@ tick_map["item-on-belt"] = function (focus, handle, pin)
     local it = utility.first_on_line(handle.get_transport_line(pin.line_idx), seek_fn)
     if it ~= nil then
         pin.it = it
-        return true
+        return
     end
 
     local advance_lookups = belt_advance_strategy[handle.type](handle)
@@ -88,8 +88,8 @@ tick_map["item-on-belt"] = function (focus, handle, pin)
             next_belt = lookup_entry
         else
             -- Loader -> container
-            focus.watching = transfer_to.next(lookup_entry, focus.watching.item_wl)
-            return true
+            focus.watching = transfer_to.next(focus, lookup_entry, focus.watching.item_wl)
+            return
         end
 
         if it ~= nil then
@@ -98,12 +98,13 @@ tick_map["item-on-belt"] = function (focus, handle, pin)
             pin.it = it
             pin.line_idx = next_line_idx
             focus.watching.handle = next_belt
-            return true
+            return
         end
     end
 
     utility.debug("watchdog changing: can't find item on belt with my id")
     focus.watching = transfer_to.inserter_nearby(
+        focus,
         handle.surface,
         handle.force,
         utility.aabb_around(focus.position, const.inserter_search_d),
@@ -111,14 +112,13 @@ tick_map["item-on-belt"] = function (focus, handle, pin)
         focus.watching.item_wl,
         utility.__no_wl
     )
-    return true
 end
 
 --- @param focus FocusInstance
 --- @param handle LuaEntity
 tick_map["item-in-inserter-hand"] = function (focus, handle)
     if handle.held_stack.valid_for_read
-        then return true end
+        then return end
 
     utility.debug("watchdog changing: held_stack.valid_for_read false")
 
@@ -126,10 +126,12 @@ tick_map["item-in-inserter-hand"] = function (focus, handle)
     if dropped_into == nil then
         focus.watching =
             transfer_to.item_on_ground(
+                focus,
                 handle.surface,
                 handle.drop_position,
                 focus.watching.item_wl
             ) or transfer_to.inserter_nearby(
+                focus,
                 handle.surface,
                 nil,
                 utility.aabb_around(handle.drop_position, const.inserter_search_d),
@@ -137,11 +139,10 @@ tick_map["item-in-inserter-hand"] = function (focus, handle)
                 focus.watching.item_wl,
                 {swinging_towards = true, source = nil}
             )
-        return true
+        return
     end
 
-    focus.watching = transfer_to.next(dropped_into, focus.watching.item_wl)
-    return true
+    focus.watching = transfer_to.next(focus, dropped_into, focus.watching.item_wl)
 end
 
 --- @param focus FocusInstance
@@ -149,15 +150,14 @@ end
 tick_map["item-in-container"] = function (focus, handle)
     if handle.train and handle.train.riding_state.acceleration ~= defines.riding.acceleration.nothing
         -- In moving train. Nothing to do
-        then return true end
+        then return end
 
     -- Always query if item got taken.
     -- inventory.get_item_count is expensive for huge space platform cargo
-    local first_taken_by = transfer_to.taken_out_of_building(handle, focus.watching.item_wl)
+    local first_taken_by = transfer_to.taken_out_of_building(focus, handle, focus.watching.item_wl)
     if first_taken_by ~= nil then
         focus.watching = first_taken_by
     end
-    return true
 end
 local item_in_container = tick_map["item-in-container"]
 
@@ -166,29 +166,28 @@ local item_in_container = tick_map["item-in-container"]
 --- @param pin PinItemInCraftingMachine
 tick_map["item-in-crafting-machine"] = function (focus, handle, pin)
     if handle.products_finished == pin.initial_products_finished
-        then return true end
+        then return end
 
     if not pin.announced_change then
         utility.debug("watchdog changing: products_finished increased")
         pin.announced_change = true
     end
 
-    local recipe = handle.get_recipe() or handle.previous_recipe
+    local recipe = handle.get_recipe() or (handle.type == "furnace" and handle.previous_recipe or nil)
     if recipe == nil then
         utility.debug("watchdog lost: first_taken_by nil and handle no longer has recipe, no result to track")
-        return false
+        focus.watching.valid = false
+        return
     end
 
     local recipe_products = recipe.products or recipe.name.products
-    local first_taken_by = transfer_to.taken_out_of_building(handle, {
+    local first_taken_by = transfer_to.taken_out_of_building(focus, handle, {
         items = utility.products_filtered(recipe_products, {items = true})
     }, handle.prototype.vector_to_place_result ~= nil)
     if first_taken_by ~= nil then
         -- Crafting machine put its (first) output here
         focus.watching = first_taken_by
     end
-
-    return true
 end
 
 --- @param focus FocusInstance
@@ -202,15 +201,17 @@ tick_map["item-held-by-robot"] = function (focus, handle, pin)
         order.target == drop_target
         or order.secondary_target == drop_target
     ) and const.all_deliver_robot_order[order.type]
-        then return true end
+        then return end
 
     utility.debug("watchdog changing: first robot order no longer deliver or target changed")
 
-    if drop_target == nil or not drop_target.valid
-        then return false end
+    if drop_target == nil or not drop_target.valid then
+        utility.debug("watchdog lost: invalid drop_target")
+        focus.watching.valid = false
+        return
+    end
 
-    focus.watching = transfer_to.next(drop_target, focus.watching.item_wl)
-    return true
+    focus.watching = transfer_to.next(focus, drop_target, focus.watching.item_wl)
 end
 
 --- @param focus FocusInstance
@@ -220,18 +221,17 @@ tick_map["item-coming-from-mining-drill"] = function (focus, handle, pin)
     local mining_target = handle.mining_target
     if mining_target == nil or not mining_target.valid then
         utility.debug("watchdog lost: no more mining_target")
-        return false
+        focus.watching.valid = false
+        return
     end
 
     if game.tick < pin.tick_should_mine
         then return true end
 
-    local first_output = transfer_to.drop_target(handle, focus.watching.item_wl)
+    local first_output = transfer_to.drop_target(focus, handle, focus.watching.item_wl)
     if first_output ~= nil then
         focus.watching = first_output
     end
-
-    return true
 end
 
 --- @param focus FocusInstance
@@ -239,8 +239,7 @@ end
 tick_map["item-in-rocket-silo"] = function (focus, handle)
     if handle.rocket ~= nil and handle.rocket_silo_status >= defines.rocket_silo_status.launch_starting then
         utility.debug("watchdog changing: rocket_silo_status launch_started")
-        focus.watching = watchdog.create.item_in_rocket(handle.rocket, focus.watching.item_wl.item)
-        return true
+        focus.watching = watchdog.create.item_in_rocket(focus, handle.rocket, focus.watching.item_wl.item)
     end
 
     return item_in_container(focus, handle)
@@ -251,10 +250,8 @@ end
 tick_map["item-in-rocket"] = function (focus, handle)
     if handle.cargo_pod ~= nil and handle.cargo_pod.cargo_pod_state == "ascending" then
         utility.debug("watchdog changing: cargo_pod_state ascending")
-        focus.watching = watchdog.create.item_in_cargo_pod(handle.cargo_pod, focus.watching.item_wl.item)
+        focus.watching = watchdog.create.item_in_cargo_pod(focus, handle.cargo_pod, focus.watching.item_wl.item)
     end
-
-    return true
 end
 
 --- @param focus FocusInstance
@@ -265,20 +262,22 @@ tick_map["item-in-cargo-pod"] = function (focus, handle, pin)
         handle.cargo_pod_state ~= "parking"
         or (pin.drop_target ~= nil and pin.drop_target.valid)
     then
-        return true
+        return
     end
 
     local destination = handle.cargo_pod_destination
     if destination.type ~= defines.cargo_destination.station then
         utility.debug("watchdog lost: cargo_pod_destination is not station")
-        return false
+        focus.watching.valid = false
+        return
     end
 
     local target = destination.station
     if target == nil then
         -- TODO: It drops as a container
         utility.debug("watchdog lost: station is nil")
-        return false
+        focus.watching.valid = false
+        return
     end
 
     if target.type == "cargo-bay" then
@@ -289,7 +288,6 @@ tick_map["item-in-cargo-pod"] = function (focus, handle, pin)
     utility.debug("watchdog updated: drop_target selected")
 
     -- The actual watchdog switch happens when cargo pod entity is destroyed
-    return true
 end
 
 --- @param focus FocusInstance
@@ -297,8 +295,7 @@ end
 --- @param pin PinItemInCargoPod
 handle_invalid_map["item-in-cargo-pod"] = function (focus, handle, pin)
     utility.debug("watchdog changing: handle got destroyed")
-    focus.watching = transfer_to.next(pin.drop_target, focus.watching.item_wl)
-    return true
+    focus.watching = transfer_to.next(focus, pin.drop_target, focus.watching.item_wl)
 end
 
 --- @param focus FocusInstance
@@ -319,7 +316,7 @@ environment_changed_map["item-in-container-with-cargo-hatches"] = function (focu
         or cause_entity.surface ~= handle.surface
         or cause_entity.cargo_pod_origin ~= handle
     then
-        return true
+        return
     end
 
     local inventory = cause_entity.get_inventory(defines.inventory.cargo_unit)
@@ -327,10 +324,9 @@ environment_changed_map["item-in-container-with-cargo-hatches"] = function (focu
 
     local first_item = utility.first_item_stack_filtered(inventory, focus.watching.item_wl)
     if first_item == nil
-        then return true end
+        then return end
 
-    focus.watching = watchdog.create.item_in_cargo_pod(cause_entity, utility.item_stack_proto(first_item))
-    return true
+    focus.watching = watchdog.create.item_in_cargo_pod(focus, cause_entity, utility.item_stack_proto(first_item))
 end
 
 --- @param focus FocusInstance
@@ -341,7 +337,7 @@ tick_map["item-coming-from-asteroid-collector"] = function (focus, handle)
 end
 
 tick_map["seed-in-agricultural-tower"] = function ()
-    return true
+    -- Waiting for tower to plant seed
 end
 
 --- If cause entity is new plant, check if tower we're watching owns it
@@ -351,11 +347,10 @@ end
 --- @param cause_entity LuaEntity
 environment_changed_map["seed-in-agricultural-tower"] = function (focus, handle, pin, cause_entity)
     if cause_entity.type ~= "plant"
-        then return true end
+        then return end
     if utility.contains(handle.owned_plants, cause_entity) then
-        focus.watching = watchdog.create.plant_growing(cause_entity)
+        focus.watching = watchdog.create.plant_growing(focus, cause_entity)
     end
-    return true
 end
 
 --- @param focus FocusInstance
@@ -371,25 +366,20 @@ tick_map["plant-growing"] = function (focus, _, pin)
             pin.last_tick_crane_destinations[idx] = tower_entity.crane_destination
         end
     end
-
-    return true
 end
 
---- @param focus FocusInstance
 --- @param handle LuaEntity
 --- @param pin PinPlantGrowing
 --- @param cause_entity LuaEntity
-environment_changed_map["plant-growing"] = function (focus, handle, pin, cause_entity)
+environment_changed_map["plant-growing"] = function (_, handle, pin, cause_entity)
     if cause_entity.type ~= "agricultural-tower"
-        then return true end
+        then return end
 
     -- This new tower might include our plant. Recompute last tick
     pin.last_tick_towers_nearby = utility.search_agricultural_towers_owning_plant(handle)
     pin.last_tick_crane_destinations = utility.mapped(pin.last_tick_towers_nearby, function (entry)
         return entry.crane_destination
     end)
-
-    return true
 end
 
 --- @param focus FocusInstance
@@ -409,14 +399,14 @@ handle_invalid_map["plant-growing"] = function (focus, _, pin)
     -- Replicate a simple inserter-took-same-tick check that entities considered container would have
     focus.watching =
         transfer_to.inserter_nearby(
+            focus,
             focus.surface,
             nil, -- Plants lose force
             utility.aabb_expand(best_guess.selection_box, const.inserter_search_d),
             best_guess.position,
             focus.watching.item_wl,
             {source = best_guess, swinging_towards = true}
-        ) or watchdog.create.item_coming_from_agricultural_tower(best_guess)
-    return true
+        ) or watchdog.create.item_coming_from_agricultural_tower(focus, best_guess)
 end
 
 --- @param focus FocusInstance
@@ -427,7 +417,7 @@ tick_map["item-coming-from-agricultural-tower"] = function (focus, handle)
 end
 
 tick_map["end-lab"] = function ()
-    return true
+    -- End of the line
 end
 
 --- @class SmoothingDefinition
@@ -522,15 +512,16 @@ end
 
 --- @param map table<string, fun(focus: FocusInstance, handle: LuaEntity, pin?: any, cause_entity?: LuaEntity): boolean>
 --- @param focus FocusInstance
---- @param required boolean
 --- @param cause_entity? LuaEntity
-local function apply_fn(map, focus, required, cause_entity)
+local function apply_fn(map, focus, cause_entity)
     local watching = focus.watching
+    --- @cast watching -nil
+
     local last_watching_type = watching.type
 
     local fn = map[last_watching_type]
-    if not fn then
-        return not required end
+    if not fn
+        then return end
     if not fn(focus, watching.handle, watching.pin, cause_entity)
         then return false end
     if focus.watching == nil
@@ -541,7 +532,6 @@ local function apply_fn(map, focus, required, cause_entity)
     utility.debug("focus watchdog changed from "..last_watching_type.." to "..focus.watching.type)
     extend_smooth(focus, map_smooth_speed_out, last_watching_type)
     extend_smooth(focus, map_smooth_speed_in, focus.watching.type)
-    return true
 end
 
 local focus_update = {}
@@ -549,18 +539,21 @@ local focus_update = {}
 --- @param focus FocusInstance
 function focus_update.tick(focus)
     if not focus.watching.handle.valid then
-        if not apply_fn(handle_invalid_map, focus, true) then
-            return false
-        end
+        apply_fn(handle_invalid_map, focus)
+
+        if focus.watching == nil or not focus.watching.valid
+            then return end
     end
 
-    return apply_fn(tick_map, focus, true)
+    apply_fn(tick_map, focus)
+
+    return focus.watching ~= nil and focus.watching.valid
 end
 
 --- @param focus FocusInstance
 --- @param cause_entity LuaEntity
 function focus_update.environment_changed(focus, cause_entity)
-    return apply_fn(environment_changed_map, focus, false, cause_entity)
+    return apply_fn(environment_changed_map, focus, cause_entity)
 end
 
 return focus_update

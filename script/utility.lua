@@ -166,6 +166,23 @@ function utility.filtered(arr, f_fn)
 end
 
 --- @generic T
+--- @param arr T[]
+--- @param f_fn fun(entry: T): boolean?
+function utility.filtered_in_place(arr, f_fn)
+    local idx = 1
+    local len = #arr
+    while idx <= len do
+        if not f_fn(arr[idx]) then
+            table.remove(arr, idx)
+            len = len - 1
+        else
+            idx = idx + 1
+        end
+    end
+    return arr
+end
+
+--- @generic T
 --- @param arr table<string, any>|LuaCustomTable<string, any>
 --- @param m_fn fun(entry: string, entry_value: any): T?
 --- @return T[]
@@ -442,6 +459,20 @@ function utility.products_filtered(products, wl)
     if #results == 0
         then return end
     return results
+end
+
+--- @param entity LuaEntity
+--- @return PrototypeWithQuality?
+function utility.crafter_recipe(entity)
+    local recipe, quality = entity.get_recipe()
+    if recipe ~= nil then
+        --- @cast quality -nil
+        --- @type PrototypeWithQuality
+        return {name = recipe.name, quality = quality.name}
+    end
+    if entity.previous_recipe ~= nil then
+        return {name = entity.previous_recipe.name, quality = entity.previous_recipe.quality}
+    end
 end
 
 return utility

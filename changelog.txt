@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.9.0
+Date: 2025-05-24
+  Major Features:
+    - Added follow rules
+  Bugfixes:
+    - Fixed crash when following assembling machine whose recipe gets unset
+---------------------------------------------------------------------------------------------------
 Version: 0.8.14
 Date: 2025-05-16
   Bugfixes:

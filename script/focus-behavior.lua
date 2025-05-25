@@ -1,7 +1,8 @@
 local const = require("const")
 local utility = require("utility")
 local focus_update = require("focus-update")
-local watchdog = require("focus-watchdog")
+local focus_watchdog = require("focus-watchdog")
+local focus_follow_rules = require("focus-follow-rules")
 
 local focus_behavior = {}
 
@@ -29,6 +30,7 @@ local focus_behavior = {}
 --- @field controlling FocusControllable[]
 --- @field smoothing? FocusSmoothingState If set, smooth_position chases position at some rate instead of directly copying it
 --- @field watching? FocusWatchdog
+--- @field watching_new? FocusWatchdog
 --- @field follow_rules? FollowRule[]
 --- @field follow_rules_cnt? number
 --- @field follow_rules_start_idx? number
@@ -83,11 +85,13 @@ end
 
 --- @param focus FocusInstance
 --- @param watching FocusWatchdog
-function focus_behavior.assign_target_inital(focus, watching)
+function focus_behavior.assign_target_initial(focus, watching)
     focus.watching = watching
-    focus.position = watchdog.get_position[watching.type](watching)
+    focus.position = focus_watchdog.get_position[watching.type](watching)
     focus.smooth_position = {x = focus.position.x, y = focus.position.y}
-    focus.surface = watchdog.get_surface[watching.type](watching)
+    focus.surface = focus_watchdog.get_surface[watching.type](watching)
+
+    focus_follow_rules.apply_matching(focus)
 end
 
 --- @param player LuaPlayer
@@ -120,7 +124,7 @@ end
 
 --- @param focus FocusInstance
 function focus_behavior.start_following(focus)
-    assert(focus.watching ~= nil, "focus instance has no inital watchdog set")
+    assert(focus.watching ~= nil, "focus instance has no initial watchdog set")
 
     focus.valid = true
 
@@ -222,13 +226,13 @@ function focus_behavior.update(focus)
     local watching = focus.watching
     --- @cast watching -nil
 
-    local new_surface = watchdog.get_surface[watching.type](watching)
+    local new_surface = focus_watchdog.get_surface[watching.type](watching)
     if new_surface ~= focus.surface and focus.smoothing ~= nil then
         utility.debug("smoothing axed because surface changed")
         focus.smoothing = nil
     end
     focus.surface = new_surface
-    focus.position = watchdog.get_position[watching.type](watching)
+    focus.position = focus_watchdog.get_position[watching.type](watching)
     update_smooth_position(focus)
 
     -- Control the controlling

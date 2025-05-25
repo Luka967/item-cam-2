@@ -415,9 +415,9 @@ function gui_follow_rules.register_event_handlers()
         name = gui_follow_rules.gid,
         --- @param gui_state CustomGuiFollowRulesState
         closed = function (event, gui_state)
-            local modified = gui_state.modified or false
-            game.print("discard "..(modified and "modified" or "not modified"))
             gui_follow_rules.close_for(event.player_index)
+            game.print("save")
+            state.follow_rules[event.player_index] = gui_state.modified_rules
         end
     }, {
         name = "action-row-discard",

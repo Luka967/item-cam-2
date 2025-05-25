@@ -24,7 +24,7 @@ local function start_item_cam(event)
     if closest_selection == nil
         then return end
 
-    focus_behavior.assign_target_inital(new_focus, closest_selection)
+    focus_behavior.assign_target_initial(new_focus, closest_selection)
     focus_behavior.start_following(new_focus)
     state.focuses[event.player_index] = new_focus
 end

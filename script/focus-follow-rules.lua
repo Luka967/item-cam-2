@@ -1,3 +1,6 @@
+--- @module "utility"
+local utility = require("__item-cam-2__.script.utility")
+
 --- @class FollowRuleItemOutOfContainer
 --- @field type "item-out-of-container"
 --- @field entity? PrototypeWithQuality
@@ -56,33 +59,79 @@ function focus_follow_rules.is_prerequisite_matching(a, b)
     if a.type == "item-from-plant" and b.type == "item-from-plant" then
         return a.entity == b.entity
     end
-    if a.type == "item-from-asteroid-collector" and b.type == "item-asteroid-collector" then
-        return a.entity == b.entity
+end
+
+--- @param watching FocusWatchdog
+local function generate_matcher_from_current_watchdog(watching)
+    if
+        watching.type == "item-in-container"
+        or watching.type == "item-in-container-with-cargo-hatches"
+        or watching.type == "item-in-rocket-silo"
+    then
+        --- @type FollowRuleItemOutOfContainer
+        return {
+            type = "item-out-of-container",
+            entity = utility.entity_proto(watching.handle)
+        }
+    end
+    if watching.type == "item-in-crafting-machine" then
+        --- @type FollowRuleItemOutOfCrafter
+        return {
+            type = "item-out-of-crafter",
+            entity = utility.entity_proto(watching.handle),
+            recipe = utility.crafter_recipe_proto(watching.handle)
+        }
+    end
+    if watching.type == "plant-growing" then
+        --- @type FollowRuleItemFromPlant
+        return {
+            type = "item-from-plant",
+            entity = watching.handle.name
+        }
+    end
+    if watching.type == "item-coming-from-asteroid-collector" then
+        --- @type FollowRuleItemFromAsteroidCollector
+        return {
+            type = "item-from-asteroid-collector",
+            entity = utility.entity_proto(watching.handle)
+        }
+    end
+    if watching.type == "item-coming-from-mining-drill" then
+        --- @type FollowRuleItemFromResource
+        return {
+            type = "item-from-resource",
+            entity = utility.entity_proto(watching.handle),
+            resource = watching.handle.mining_target.name
+        }
     end
 end
 
 --- @param focus FocusInstance
---- @param matching FollowRule
-function focus_follow_rules.seek_matching_item_wl(focus, matching)
+function focus_follow_rules.apply_matching(focus)
     local rules = focus.follow_rules
     if rules == nil
         then return end
     local cnt = focus.follow_rules_cnt
     local idx_start = focus.follow_rules_start_idx
-    --- @cast cnt number
-    --- @cast idx_start number
+    --- @cast cnt -nil
+    --- @cast idx_start -nil
+
+    local matcher = generate_matcher_from_current_watchdog(focus.watching)
+    if matcher == nil
+        then return end
+    utility.debug("follow rules matcher "..matcher.type.." running at #"..idx_start.." / "..cnt)
 
     for idx = idx_start, cnt do
-        if focus_follow_rules.is_prerequisite_matching(rules[idx], matching) then
-            --- @type FocusItemWhitelist
-            local ret = {
+        if focus_follow_rules.is_prerequisite_matching(rules[idx], matcher) then
+            utility.debug("follow rules picked #"..idx)
+            focus.watching.item_wl = {
                 item = {
-                    name = prototypes.item[rules[idx].target.name],
+                    name = rules[idx].target.name,
                     quality = rules[idx].target.quality
                 }
             }
             focus.follow_rules_start_idx = idx + 1
-            return ret
+            return
         end
     end
 end

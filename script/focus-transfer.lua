@@ -166,7 +166,7 @@ function transfer_to.robot_nearby(focus, surface, force, search_area, ref_pos, i
         return watchdog.create.item_held_by_robot(
             focus,
             best_guess,
-            utility.item_stack_proto(its_item_stack)
+            utility.item_proto(its_item_stack)
         )
     end
 end
@@ -183,20 +183,9 @@ function transfer_to.next(focus, entity, item_wl)
         return watchdog.create.item_in_inserter_hand(focus, entity)
     end
     if const.is_crafting_machine[entity_type] then
-        item_wl = follow_rules.seek_matching_item_wl(focus, {
-            type = "item-out-of-crafter",
-            entity = {name = entity.name, quality = entity.quality.name},
-            recipe = utility.crafter_recipe(entity)
-        }) or item_wl
-
         return watchdog.create.item_in_crafting_machine(focus, entity)
     end
     if const.container_inventory_idx[entity_type] then
-        item_wl = follow_rules.seek_matching_item_wl(focus, {
-            type = "item-out-of-container",
-            entity = {name = entity.name, quality = entity.quality.name},
-        }) or item_wl
-
         assert(item_wl.item or item_wl.items, "expected whitelist on item")
 
         local inventory = entity.get_inventory(const.container_inventory_idx[entity_type])
@@ -207,11 +196,11 @@ function transfer_to.next(focus, entity, item_wl)
             return watchdog.create.item_in_container(
                 focus,
                 entity,
-                utility.item_stack_proto(first_applicable_stack)
+                utility.item_proto(first_applicable_stack)
             )
         end
 
-        utility.debug("transfer_to.next: item from container was already taken by inserter")
+        -- utility.debug("transfer_to.next: item from container was already taken by inserter")
         return transfer_to.inserter_nearby(
             focus,
             entity.surface,
@@ -257,9 +246,12 @@ function transfer_to.drop_target(focus, entity, item_wl)
     local best_guess, line_idx = utility.minimum_on_belt(drop_target, function (candidate, line_idx)
         if line_idx ~= drop_line_idx
             then return end
+
+        utility.debug_item_on_line(candidate, line_idx, drop_target, const.__dc_min_cand)
         if not utility.is_item_filtered(candidate.stack, item_wl)
             then return end
 
+        utility.debug_item_on_line(candidate, line_idx, drop_target, const.__dc_min_pass)
         return utility.sq_distance(
             entity.drop_position,
             drop_target.get_line_item_position(line_idx, candidate.position)
@@ -267,6 +259,7 @@ function transfer_to.drop_target(focus, entity, item_wl)
     end)
 
     if best_guess and line_idx then
+        utility.debug_item_on_line(best_guess, line_idx, drop_target, const.__dc_min_pick)
         return watchdog.create.item_on_belt(focus, best_guess, line_idx, drop_target)
     end
 end

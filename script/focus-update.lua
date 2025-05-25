@@ -2,6 +2,7 @@ local const = require("const")
 local utility = require("utility")
 local watchdog = require("focus-watchdog")
 local transfer_to = require("focus-transfer")
+local follow_rules = require("focus-follow-rules")
 
 local handle_invalid_map = {}
 local tick_map = {}
@@ -156,7 +157,7 @@ tick_map["item-in-container"] = function (focus, handle)
     -- inventory.get_item_count is expensive for huge space platform cargo
     local first_taken_by = transfer_to.taken_out_of_building(focus, handle, focus.watching.item_wl)
     if first_taken_by ~= nil then
-        focus.watching = first_taken_by
+        focus.watching =  first_taken_by
     end
 end
 local item_in_container = tick_map["item-in-container"]
@@ -173,17 +174,19 @@ tick_map["item-in-crafting-machine"] = function (focus, handle, pin)
         pin.announced_change = true
     end
 
-    local recipe = handle.get_recipe() or (handle.type == "furnace" and handle.previous_recipe or nil)
-    if recipe == nil then
-        utility.debug("watchdog lost: first_taken_by nil and handle no longer has recipe, no result to track")
-        focus.watching.valid = false
-        return
+    local item_wl = focus.watching.item_wl
+    if item_wl == nil then
+        local recipe_set = utility.crafter_recipe_proto(handle)
+        if recipe_set == nil
+            then return end
+        local recipe_proto = prototypes.recipe[recipe_set.name]
+        item_wl = {
+            items = utility.products_filtered(recipe_proto.products, {items = true})
+        }
     end
 
-    local recipe_products = recipe.products or recipe.name.products
-    local first_taken_by = transfer_to.taken_out_of_building(focus, handle, {
-        items = utility.products_filtered(recipe_products, {items = true})
-    }, handle.prototype.vector_to_place_result ~= nil)
+    local has_drop_target = handle.prototype.vector_to_place_result ~= nil
+    local first_taken_by = transfer_to.taken_out_of_building(focus, handle, item_wl, has_drop_target)
     if first_taken_by ~= nil then
         -- Crafting machine put its (first) output here
         focus.watching = first_taken_by
@@ -211,7 +214,7 @@ tick_map["item-held-by-robot"] = function (focus, handle, pin)
         return
     end
 
-    focus.watching = transfer_to.next(focus, drop_target, focus.watching.item_wl)
+    focus.watching =  transfer_to.next(focus, drop_target, focus.watching.item_wl)
 end
 
 --- @param focus FocusInstance
@@ -230,7 +233,7 @@ tick_map["item-coming-from-mining-drill"] = function (focus, handle, pin)
 
     local first_output = transfer_to.drop_target(focus, handle, focus.watching.item_wl)
     if first_output ~= nil then
-        focus.watching = first_output
+        focus.watching =  first_output
     end
 end
 
@@ -239,7 +242,7 @@ end
 tick_map["item-in-rocket-silo"] = function (focus, handle)
     if handle.rocket ~= nil and handle.rocket_silo_status >= defines.rocket_silo_status.launch_starting then
         utility.debug("watchdog changing: rocket_silo_status launch_started")
-        focus.watching = watchdog.create.item_in_rocket(focus, handle.rocket, focus.watching.item_wl.item)
+        focus.watching =  watchdog.create.item_in_rocket(focus, handle.rocket, focus.watching.item_wl.item)
     end
 
     return item_in_container(focus, handle)
@@ -250,7 +253,7 @@ end
 tick_map["item-in-rocket"] = function (focus, handle)
     if handle.cargo_pod ~= nil and handle.cargo_pod.cargo_pod_state == "ascending" then
         utility.debug("watchdog changing: cargo_pod_state ascending")
-        focus.watching = watchdog.create.item_in_cargo_pod(focus, handle.cargo_pod, focus.watching.item_wl.item)
+        focus.watching =  watchdog.create.item_in_cargo_pod(focus, handle.cargo_pod, focus.watching.item_wl.item)
     end
 end
 
@@ -295,7 +298,7 @@ end
 --- @param pin PinItemInCargoPod
 handle_invalid_map["item-in-cargo-pod"] = function (focus, handle, pin)
     utility.debug("watchdog changing: handle got destroyed")
-    focus.watching = transfer_to.next(focus, pin.drop_target, focus.watching.item_wl)
+    focus.watching =  transfer_to.next(focus, pin.drop_target, focus.watching.item_wl)
 end
 
 --- @param focus FocusInstance
@@ -326,7 +329,7 @@ environment_changed_map["item-in-container-with-cargo-hatches"] = function (focu
     if first_item == nil
         then return end
 
-    focus.watching = watchdog.create.item_in_cargo_pod(focus, cause_entity, utility.item_stack_proto(first_item))
+    focus.watching =  watchdog.create.item_in_cargo_pod(focus, cause_entity, utility.item_proto(first_item))
 end
 
 --- @param focus FocusInstance
@@ -349,7 +352,7 @@ environment_changed_map["seed-in-agricultural-tower"] = function (focus, handle,
     if cause_entity.type ~= "plant"
         then return end
     if utility.contains(handle.owned_plants, cause_entity) then
-        focus.watching = watchdog.create.plant_growing(focus, cause_entity)
+        focus.watching =  watchdog.create.plant_growing(focus, cause_entity)
     end
 end
 
@@ -514,40 +517,40 @@ end
 --- @param focus FocusInstance
 --- @param cause_entity? LuaEntity
 local function apply_fn(map, focus, cause_entity)
-    local watching = focus.watching
-    --- @cast watching -nil
+    local last_watching = focus.watching
+    --- @cast last_watching -nil
 
-    local last_watching_type = watching.type
-
-    local fn = map[last_watching_type]
+    local fn = map[last_watching.type]
     if not fn
-        then return end
-    if not fn(focus, watching.handle, watching.pin, cause_entity)
-        then return false end
-    if focus.watching == nil
         then return false end
 
-    if focus.watching.type == last_watching_type
+    fn(focus, last_watching.handle, last_watching.pin, cause_entity)
+
+    if focus.watching == nil or not focus.watching.valid
+        then return false end
+
+    if focus.watching == last_watching
         then return true end
-    utility.debug("focus watchdog changed from "..last_watching_type.." to "..focus.watching.type)
-    extend_smooth(focus, map_smooth_speed_out, last_watching_type)
+
+    utility.debug("focus watchdog changed from "..last_watching.type.." to "..focus.watching.type)
+    follow_rules.apply_matching(focus)
+
+    extend_smooth(focus, map_smooth_speed_out, last_watching.type)
     extend_smooth(focus, map_smooth_speed_in, focus.watching.type)
+    return true
 end
 
 local focus_update = {}
 
 --- @param focus FocusInstance
 function focus_update.tick(focus)
-    if not focus.watching.handle.valid then
-        apply_fn(handle_invalid_map, focus)
+    if not focus.watching.handle.valid and not apply_fn(handle_invalid_map, focus)
+        then return false end
 
-        if focus.watching == nil or not focus.watching.valid
-            then return end
-    end
+    if not apply_fn(tick_map, focus)
+        then return false end
 
-    apply_fn(tick_map, focus)
-
-    return focus.watching ~= nil and focus.watching.valid
+    return true
 end
 
 --- @param focus FocusInstance

@@ -18,22 +18,25 @@ function create.item_on_ground(focus, entity)
         type = "item-on-ground",
         valid = true,
         handle = entity,
-        item_wl = {item = utility.item_stack_proto(entity.stack)}
+        item_wl = {item = utility.item_proto(entity.stack)}
     }
 end
 
 --- @param focus FocusInstance
 --- @param entity LuaEntity
---- @param item ItemIDAndQualityIDPair
+--- @param item PrototypeWithQuality
 function create.item_in_container(focus, entity, item)
-    if entity.type == "rocket-silo"
-        then return create.item_in_rocket_silo(focus, entity, item) end
-    if #entity.cargo_hatches > 0
-        then return create.item_in_container_with_cargo_hatches(focus, entity, item) end
+    local type = "item-in-container"
+    if entity.type == "rocket-silo" then
+        type = "item-in-rocket-silo"
+    end
+    if #entity.cargo_hatches > 0 then
+        type = "item-in-container-with-cargo-hatches"
+    end
 
     --- @type FocusWatchdog
     return {
-        type = "item-in-container",
+        type = type,
         valid = true,
         handle = entity,
         item_wl = {item = item}
@@ -55,7 +58,7 @@ function create.item_on_belt(focus, item_on_line, line_idx, belt_entity)
         type = "item-on-belt",
         valid = true,
         handle = belt_entity,
-        item_wl = {item = utility.item_stack_proto(item_on_line.stack)},
+        item_wl = {item = utility.item_proto(item_on_line.stack)},
         --- @type PinItemOnBelt
         pin = {
             it = item_on_line,
@@ -75,7 +78,7 @@ function create.item_in_inserter_hand(focus, entity)
         type = "item-in-inserter-hand",
         valid = true,
         handle = entity,
-        item_wl = {item = utility.item_stack_proto(entity.held_stack)}
+        item_wl = {item = utility.item_proto(entity.held_stack)}
     }
 end
 
@@ -104,7 +107,7 @@ end
 
 --- @param focus FocusInstance
 --- @param entity LuaEntity
---- @param item ItemIDAndQualityIDPair
+--- @param item PrototypeWithQuality
 function create.item_held_by_robot(focus, entity, item)
     local first_order = entity.robot_order_queue[1]
     local drop_target = first_order.target or first_order.secondary_target
@@ -162,20 +165,7 @@ end
 
 --- @param focus FocusInstance
 --- @param entity LuaEntity
---- @param item ItemIDAndQualityIDPair
-function create.item_in_rocket_silo(focus, entity, item)
-    --- @type FocusWatchdog
-    return {
-        type = "item-in-rocket-silo",
-        valid = true,
-        handle = entity,
-        item_wl = {item = item}
-    }
-end
-
---- @param focus FocusInstance
---- @param entity LuaEntity
---- @param item ItemIDAndQualityIDPair
+--- @param item PrototypeWithQuality
 function create.item_in_rocket(focus, entity, item)
     --- @type FocusWatchdog
     return {
@@ -191,7 +181,7 @@ end
 
 --- @param focus FocusInstance
 --- @param entity LuaEntity
---- @param item ItemIDAndQualityIDPair
+--- @param item PrototypeWithQuality
 function create.item_in_cargo_pod(focus, entity, item)
     --- @type FocusWatchdog
     return {
@@ -201,19 +191,6 @@ function create.item_in_cargo_pod(focus, entity, item)
         item_wl = {item = item},
         --- @type PinItemInCargoPod
         pin = {}
-    }
-end
-
---- @param focus FocusInstance
---- @param entity LuaEntity
---- @param item ItemIDAndQualityIDPair
-function create.item_in_container_with_cargo_hatches(focus, entity, item)
-    --- @type FocusWatchdog
-    return {
-        type = "item-in-container-with-cargo-hatches",
-        valid = true,
-        handle = entity,
-        item_wl = {item = item}
     }
 end
 
@@ -231,7 +208,7 @@ end
 
 --- @param focus FocusInstance
 --- @param entity LuaEntity
---- @param item ItemIDAndQualityIDPair
+--- @param item PrototypeWithQuality
 function create.seed_in_agricultural_tower(focus, entity, item)
     --- @type FocusWatchdog
     return {

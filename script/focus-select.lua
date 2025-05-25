@@ -45,7 +45,7 @@ local function container_with_contents(focus, selected)
     if item_stack == nil
         then return end
 
-    return {watchdog.create.item_in_container(focus, selected, utility.item_stack_proto(item_stack))}
+    return {watchdog.create.item_in_container(focus, selected, utility.item_proto(item_stack))}
 end
 
 --- @param focus FocusInstance
@@ -63,7 +63,7 @@ local function robot_holding_item(focus, selected)
     if item_stack == nil
         then return end
 
-    return {watchdog.create.item_held_by_robot(focus, selected, utility.item_stack_proto(item_stack))}
+    return {watchdog.create.item_held_by_robot(focus, selected, utility.item_proto(item_stack))}
 end
 
 --- @param focus FocusInstance

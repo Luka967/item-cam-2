@@ -35,7 +35,7 @@ function utility.debug_item_on_line(item_on_line, line_idx, entity, color)
         width = 1,
         target = entity.get_line_item_position(line_idx, item_on_line.position),
         radius = 0.25,
-        time_to_live = const.__d_ttl
+        time_to_live = 1
     })
 end
 --- @param surface LuaSurface
@@ -361,23 +361,23 @@ function utility.first_on_belts(arr, fn)
 end
 
 --- @class FocusItemWhitelist
---- @field item? ItemIDAndQualityIDPair
+--- @field item? PrototypeWithQuality
 --- @field items? string[]
 --- @field qualities? string[]
 
 utility.__no_wl = {}
 
---- @param item ItemWithQualityID
+--- @param item LuaItemStack
 --- @param wl FocusItemWhitelist
 function utility.is_item_filtered(item, wl)
     if wl.item ~= nil and (
         item.name ~= wl.item.name
-        or item.quality ~= wl.item.quality
+        or item.quality.name ~= wl.item.quality
     ) then return false end
 
     if wl.items ~= nil and not utility.contains(wl.items, item.name)
         then return false end
-    if wl.qualities ~= nil and not utility.contains(wl.qualities, item.quality.name)
+    if wl.qualities ~= nil and not utility.contains(wl.qualities, item.quality)
         then return false end
 
     return true
@@ -401,12 +401,22 @@ function utility.first_item_stack_filtered(inventory, item_wl)
     end
 end
 
---- @param item ItemWithQualityID
-function utility.item_stack_proto(item)
-    --- @type ItemIDAndQualityIDPair
+--- @param entity LuaEntity
+function utility.entity_proto(entity)
+    --- @type PrototypeWithQuality
+    return {
+        name = entity.name,
+        quality = entity.quality.name
+    }
+end
+
+
+--- @param item LuaItemStack
+function utility.item_proto(item)
+    --- @type PrototypeWithQuality
     return {
         name = item.name,
-        quality = item.quality
+        quality = item.quality.name
     }
 end
 
@@ -463,15 +473,21 @@ end
 
 --- @param entity LuaEntity
 --- @return PrototypeWithQuality?
-function utility.crafter_recipe(entity)
+function utility.crafter_recipe_proto(entity)
     local recipe, quality = entity.get_recipe()
     if recipe ~= nil then
         --- @cast quality -nil
         --- @type PrototypeWithQuality
-        return {name = recipe.name, quality = quality.name}
+        return {
+            name = recipe.name,
+            quality = quality.name
+        }
     end
-    if entity.previous_recipe ~= nil then
-        return {name = entity.previous_recipe.name, quality = entity.previous_recipe.quality}
+    if entity.type == "furnace" and entity.previous_recipe ~= nil then
+        return {
+            name = entity.previous_recipe.name.name,
+            quality = entity.previous_recipe.quality.name
+        }
     end
 end
 

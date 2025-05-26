@@ -142,7 +142,7 @@ end
 --- @param event AnyGuiEvent
 local function gui_event_handler(event)
     local element = event.element
-    if element == nil
+    if element == nil or not element.valid
         then return end
 
     local gid = knock_for_gid(event.player_index, element)

@@ -59,6 +59,24 @@ function gui_generator.generate_at(target, spec, window)
     return created_element
 end
 
+--- Set ignored_by_interaction = to, on everything BUT window frame.
+--- This makes events fall back to window element, turning every element non-interactible
+--- but under the assumption that the window frame element itself has no catch-all handlers
+--- @param window LuaGuiElement
+--- @param to boolean
+function gui_generator.set_interactible(window, to)
+    --- @param target LuaGuiElement
+    local function recursive(target)
+        target.ignored_by_interaction = not to
+        for _, child in ipairs(target.children) do
+            recursive(child)
+        end
+    end
+    for _, child in ipairs(window) do
+        recursive(child)
+    end
+end
+
 --- @class CustomGuiElementEventHandlers: CustomGuiEventHandlerTable
 --- @field name string
 

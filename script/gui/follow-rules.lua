@@ -419,6 +419,7 @@ function gui_follow_rules.register_event_handlers()
         closed = function (event, gui_state)
             if gui_state.discard_dialog_open
                 then return end -- Intentionally not closing here
+            -- Act as confirm
             state.follow_rules[event.player_index] = gui_state.modified_rules
             gui_follow_rules.close_for(event.player_index)
         end
@@ -429,6 +430,14 @@ function gui_follow_rules.register_event_handlers()
             -- Shift focus from dialog window back to me
             gui_state.discard_dialog_open = nil
             gui_state.player.opened = gui_state.window
+            gui_generator.set_interactible(gui_state.window, true)
+        end,
+        --- @param gui_state CustomGuiFollowRulesState
+        closed = function (event, gui_state)
+            -- I must copy paste, for i am the bad program
+            gui_state.discard_dialog_open = nil
+            gui_state.player.opened = gui_state.window
+            gui_generator.set_interactible(gui_state.window, true)
         end
     }, {
         name = "remote-dialog-close",
@@ -439,11 +448,14 @@ function gui_follow_rules.register_event_handlers()
         name = "action-row-discard",
         --- @param gui_state CustomGuiFollowRulesState
         click = function (event, gui_state)
+            if gui_state.discard_dialog_open
+                then return end
             if not gui_state.modified then
                 gui_follow_rules.close_for(event.player_index)
                 return
             end
             gui_state.discard_dialog_open = true
+            gui_generator.set_interactible(gui_state.window, false)
             gui_dialog.open_for({
                 player = gui_state.player,
                 title = "Confirmation",

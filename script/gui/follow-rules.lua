@@ -10,9 +10,11 @@ local state = require("__item-cam-2__.script.state")
 local gui_custom = require("__item-cam-2__.script.gui-custom")
 --- @module "gui-generator"
 local gui_generator = require("__item-cam-2__.script.gui-generator")
+--- @module "dialog"
+local gui_dialog = require("__item-cam-2__.script.gui.dialog")
 
 local gui_follow_rules = {}
-gui_follow_rules.gid = "test-gid"
+gui_follow_rules.gid = "ic2-follow-rules"
 
 local container_types = {
     "cargo-landing-pad", "space-platform-hub", "rocket-silo",
@@ -320,9 +322,9 @@ local add_button = {
     selected_index = 1
 }
 
---- @class CustomGuiFollowRulesState
---- @field player LuaPlayer
+--- @class CustomGuiFollowRulesState: GeneratorGuiBaseState
 --- @field modified? boolean
+--- @field discard_dialog_open? boolean
 --- @field original_rules? FollowRule[]
 --- @field modified_rules FollowRule[]
 
@@ -415,17 +417,48 @@ function gui_follow_rules.register_event_handlers()
         name = gui_follow_rules.gid,
         --- @param gui_state CustomGuiFollowRulesState
         closed = function (event, gui_state)
-            gui_follow_rules.close_for(event.player_index)
-            game.print("save")
+            if gui_state.discard_dialog_open
+                then return end -- Intentionally not closing here
             state.follow_rules[event.player_index] = gui_state.modified_rules
+            gui_follow_rules.close_for(event.player_index)
+        end
+    }, {
+        name = "remote-dialog-cancel",
+        --- @param gui_state CustomGuiFollowRulesState
+        click = function (event, gui_state)
+            -- Shift focus from dialog window back to me
+            gui_state.discard_dialog_open = nil
+            gui_state.player.opened = gui_state.window
+        end
+    }, {
+        name = "remote-dialog-close",
+        click = function (event)
+            gui_follow_rules.close_for(event.player_index)
         end
     }, {
         name = "action-row-discard",
         --- @param gui_state CustomGuiFollowRulesState
         click = function (event, gui_state)
-            local modified = gui_state.modified or false
-            game.print("discard "..(modified and "modified" or "not modified"))
-            gui_follow_rules.close_for(event.player_index)
+            if not gui_state.modified then
+                gui_follow_rules.close_for(event.player_index)
+                return
+            end
+            gui_state.discard_dialog_open = true
+            gui_dialog.open_for({
+                player = gui_state.player,
+                title = "Confirmation",
+                caption = "There are unconfirmed changes.",
+                back = true,
+                confirm = {
+                    caption = "Discard changes",
+                    style = "red_confirm_button"
+                },
+                remote = {
+                    window = gui_state.window,
+                    back = {gid = gui_follow_rules.gid, name = "remote-dialog-cancel"},
+                    confirm = {gid = gui_follow_rules.gid, name = "remote-dialog-close"}
+                }
+            })
         end
     }, {
         name = "action-row-save",
@@ -496,6 +529,8 @@ function gui_follow_rules.register_event_handlers()
             --- @cast rule_idx number
             gui_state.modified = true
             gui_state.modified_rules[rule_idx].entity = entity_pick
+            gui_state.modified_rules[rule_idx].recipe = nil
+            gui_state.modified_rules[rule_idx].target = nil
         end
     }, {
         name = "rule-crafter-recipe",
@@ -513,6 +548,7 @@ function gui_follow_rules.register_event_handlers()
             --- @cast rule_idx number
             gui_state.modified = true
             gui_state.modified_rules[rule_idx].recipe = recipe_pick
+            gui_state.modified_rules[rule_idx].target = nil
         end
     }, {
         name = "rule-container-entity",
@@ -529,6 +565,7 @@ function gui_follow_rules.register_event_handlers()
             --- @cast rule_idx number
             gui_state.modified = true
             gui_state.modified_rules[rule_idx].entity = entity_pick
+            gui_state.modified_rules[rule_idx].target = nil
         end
     }, {
         name = "rule-plant-result-entity",
@@ -546,6 +583,7 @@ function gui_follow_rules.register_event_handlers()
             --- @cast rule_idx number
             gui_state.modified = true
             gui_state.modified_rules[rule_idx].entity = entity_pick
+            gui_state.modified_rules[rule_idx].target = nil
         end
     }, {
         name = "rule-mining-result-entity",
@@ -567,6 +605,8 @@ function gui_follow_rules.register_event_handlers()
             --- @cast rule_idx number
             gui_state.modified = true
             gui_state.modified_rules[rule_idx].entity = entity_pick
+            gui_state.modified_rules[rule_idx].resource = nil
+            gui_state.modified_rules[rule_idx].target = nil
         end
     }, {
         name = "rule-mining-result-resource",
@@ -584,6 +624,7 @@ function gui_follow_rules.register_event_handlers()
             --- @cast rule_idx number
             gui_state.modified = true
             gui_state.modified_rules[rule_idx].resource = resource_pick
+            gui_state.modified_rules[rule_idx].target = nil
         end
     }, {
         name = "rule-target",

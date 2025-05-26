@@ -1,5 +1,4 @@
 local utility = require("utility")
-local follow_rules = require("focus-follow-rules")
 
 --- @class FocusWatchdog
 --- @field type string

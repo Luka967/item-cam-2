@@ -1,7 +1,6 @@
 local const = require("const")
 local utility = require("utility")
 local watchdog = require("focus-watchdog")
-local follow_rules = require("focus-follow-rules")
 
 local transfer_to = {}
 

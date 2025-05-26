@@ -113,8 +113,8 @@ function focus_follow_rules.apply_matching(focus)
         then return end
     local cnt = focus.follow_rules_cnt
     local idx_start = focus.follow_rules_start_idx
-    --- @cast cnt -nil
-    --- @cast idx_start -nil
+    assert(cnt ~= nil, "follow_rules_cnt nil yet follow_rules defined")
+    assert(idx_start ~= nil, "follow_rules_start_idx nil yet follow_rules defined")
 
     local matcher = generate_matcher_from_current_watchdog(focus.watching)
     if matcher == nil

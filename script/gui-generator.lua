@@ -8,6 +8,10 @@ local gui_custom = require("gui-custom")
 
 --- @alias CustomGuiElement LuaGuiElement.add_param|CustomGuiElementExtra
 
+--- @class GeneratorGuiBaseState
+--- @field window LuaGuiElement
+--- @field player LuaPlayer
+
 local gui_generator = {}
 
 --- @param target LuaGuiElement

@@ -96,11 +96,26 @@ function custom_gui.register_event_handlers_for(gid, elem_name, handlers)
     custom_gui_events[gid][elem_name] = handlers
 end
 
+--- @param gid string
+--- @param name string
+--- @param event AnyGuiEvent
+function custom_gui.remote_call_event(gid, name, event)
+    assert(custom_gui_events[gid] ~= nil, "this gid has no events defined")
+    assert(custom_gui_events[gid][name] ~= nil, "this name under this gid has no events defined")
+
+    local handlers = custom_gui_events[gid][name]
+    local event_name = gui_event_map[event.name]
+    local known_state = custom_gui_state[event.player_index] and custom_gui_state[event.player_index][gid]
+
+    handlers[event_name](event, known_state, gid)
+end
+
 --- Pick the first GID found beginning from innermost element
 --- @param player_idx number
 --- @param element LuaGuiElement
 local function knock_for_gid(player_idx, element)
     if element.tags ~= nil and element.tags.gid ~= nil then
+        --- @type string
         return element.tags.gid
     end
     if element.parent ~= nil then
@@ -126,22 +141,20 @@ end
 
 --- @param event AnyGuiEvent
 local function gui_event_handler(event)
-    if event.element == nil
+    local element = event.element
+    if element == nil
         then return end
 
-    local gid = knock_for_gid(event.player_index, event.element)
-    --- @cast gid string
+    local gid = knock_for_gid(event.player_index, element)
     if gid == nil or custom_gui_events[gid] == nil
         then return end
 
     local event_name = gui_event_map[event.name]
-    local handlers = bubble_the_event(gid, event.element, event_name)
+    local handlers = bubble_the_event(gid, element, event_name)
     if handlers == nil or not handlers[event_name]
         then return end
 
-    local known_state = custom_gui_state[event.player_index] and custom_gui_state[event.player_index][gid]
-
-    handlers[event_name](event, known_state, gid)
+    custom_gui.remote_call_event(gid, element.name, event)
 end
 
 function custom_gui.register_main_event_handlers()

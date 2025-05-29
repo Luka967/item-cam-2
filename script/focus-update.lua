@@ -423,6 +423,12 @@ tick_map["end-lab"] = function ()
     -- End of the line
 end
 
+--- @param focus FocusInstance
+--- @param handle LuaEntity
+tick_map["unit"] = function (focus, handle)
+    -- Do nothing
+end
+
 --- @class SmoothingDefinition
 --- @field speed? number
 --- @field min_speed? number

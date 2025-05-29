@@ -113,6 +113,13 @@ local function lab(focus, selected)
     return {watchdog.create.end_lab(focus, selected)}
 end
 
+--- @param focus FocusInstance
+--- @param selected LuaEntity
+local function unit(focus, selected)
+    return {watchdog.create.unit(focus, selected)}
+end
+
+
 local map = {
     ["item-entity"] = item_on_ground,
     ["inserter"] = inserter_with_item_in_hand,
@@ -121,7 +128,9 @@ local map = {
     ["asteroid-collector"] = asteroid_collector,
     ["agricultural-tower"] = agricultural_tower,
     ["plant"] = minable_plant,
-    ["lab"] = lab
+    ["lab"] = lab,
+    ["unit"] = unit,
+    ["spider-unit"] = unit
 }
 for prototype in pairs(const.is_belt) do
     map[prototype] = belt_with_items_on_it

@@ -273,6 +273,18 @@ function create.end_lab(focus, entity)
     }
 end
 
+--- @param focus FocusInstance
+--- @param entity LuaEntity
+function create.unit(focus, entity)
+    --- @type FocusWatchdog
+    return {
+        type = "unit",
+        valid = true,
+        handle = entity,
+        item_wl = {}
+    }
+end
+
 --- @param watchdog FocusWatchdog
 local function just_get_handle_pos(watchdog)
     return watchdog.handle.position
@@ -306,7 +318,8 @@ local get_position = {
     ["seed-in-agricultural-tower"] = just_get_handle_pos,
     ["plant-growing"] = just_get_handle_selection_box,
     ["item-coming-from-agricultural-tower"] = just_get_handle_pos,
-    ["end-lab"] = just_get_handle_pos
+    ["end-lab"] = just_get_handle_pos,
+    ["unit"] = just_get_handle_pos
 }
 
 --- @param watchdog FocusWatchdog
@@ -330,7 +343,8 @@ local get_surface = {
     ["seed-in-agricultural-tower"] = just_get_handle_surface,
     ["plant-growing"] = just_get_handle_surface,
     ["item-coming-from-agricultural-tower"] = just_get_handle_surface,
-    ["end-lab"] = just_get_handle_surface
+    ["end-lab"] = just_get_handle_surface,
+    ["unit"] = just_get_handle_surface
 }
 
 return {

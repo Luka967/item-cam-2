@@ -2,7 +2,9 @@
 Version: 0.9.0
 Date: 2025-05-24
   Major Features:
-    - Added follow rules
+    - Added follow rules. You can now pick specific in situations where multiple results can be followed
+  Minor Features:
+    - You can now watch enemy units, such as biters, spitters and pentapods
   Bugfixes:
     - Fixed crash when following assembling machine whose recipe gets unset
 ---------------------------------------------------------------------------------------------------

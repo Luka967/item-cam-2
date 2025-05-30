@@ -33,8 +33,8 @@ data:extend({{
 data:extend({{
     name = const.name_options_shortcut,
     type = "shortcut",
-    icon = "__base__/graphics/icons/iron-plate.png",
-    small_icon = "__base__/graphics/icons/iron-plate.png",
+    icon = "__item-cam-2__/graphics/icons/item-cam-options.png",
+    small_icon = "__item-cam-2__/graphics/icons/item-cam-options.png",
     action = "lua",
     toggleable = true
 }})
@@ -85,14 +85,6 @@ data.raw["gui-style"].default.ic2gui_followrules_entry_empty_space = {
     vertically_stretchable = "on"
 }
 
-data.raw["gui-style"].default.ic2gui_followrules_entry_draggable_space = {
-    type = "empty_widget_style",
-    parent = "draggable_space",
-    width = 36,
-    vertically_stretchable = "on",
-    right_margin = 4
-}
-
 data.raw["gui-style"].default.ic2gui_followrules_entry_delete_button = {
     type = "button_style",
     parent = "dark_button",
@@ -116,7 +108,7 @@ data.raw["gui-style"].default.ic2gui_followrules_detail_label = {
     single_line = false,
     ignored_by_search = true,
     bottom_margin = -4,
-    maximal_width = 400
+    maximal_width = 480
 }
 
 data.raw["gui-style"].default.ic2gui_followrules_detail_label_last = {
@@ -139,3 +131,37 @@ data.raw["gui-style"].default.ic2gui_followrules_order_label = {
     left_margin = 8,
     right_margin = 8,
 }
+data.raw["gui-style"].default.ic2gui_followrules_order_buttons = {
+    type = "vertical_flow_style",
+    right_margin = 8
+}
+local function entry_move_graphics(direction)
+    --- @type data.ButtonStyleSpecification
+    return {
+        type = "button_style",
+        size = {8, 8},
+        tooltip = "gui-follow-rules.rule-move-"..direction.."-tooltip",
+        default_graphical_set = {
+            filename = "__core__/graphics/arrows/table-header-sort-arrow-"..direction.."-active.png",
+            size = {16, 16},
+            scale = 0.5
+        },
+        hovered_graphical_set = {
+            filename = "__core__/graphics/arrows/table-header-sort-arrow-"..direction.."-hover.png",
+            size = {16, 16},
+            scale = 0.5
+        },
+        clicked_graphical_set = {
+            filename = "__core__/graphics/arrows/table-header-sort-arrow-"..direction.."-active.png",
+            size = {16, 16},
+            scale = 0.5
+        },
+        disabled_graphical_set = {
+            filename = "__core__/graphics/arrows/table-header-sort-arrow-"..direction.."-white.png",
+            size = {16, 16},
+            scale = 0.5
+        }
+    }
+end
+data.raw["gui-style"].default.ic2gui_followrules_entry_move_up_button = entry_move_graphics("up")
+data.raw["gui-style"].default.ic2gui_followrules_entry_move_down_button = entry_move_graphics("down")

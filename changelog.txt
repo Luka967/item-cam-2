@@ -5,6 +5,8 @@ Date: 2025-05-24
     - Added follow rules. You can now pick specific in situations where multiple results can be followed
   Minor Features:
     - You can now watch enemy units, such as biters, spitters and pentapods
+  Changes:
+    - "Lost focus" message is no longer displayed because of internal changes, and will be revisited later
   Bugfixes:
     - Fixed crash when following assembling machine whose recipe gets unset
 ---------------------------------------------------------------------------------------------------

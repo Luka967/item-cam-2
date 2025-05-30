@@ -72,7 +72,7 @@ function gui_generator.set_interactible(window, to)
             recursive(child)
         end
     end
-    for _, child in ipairs(window) do
+    for _, child in ipairs(window.children) do
         recursive(child)
     end
 end

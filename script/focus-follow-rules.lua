@@ -36,12 +36,16 @@ local focus_follow_rules = {}
 --- @param a PrototypeWithQuality
 --- @param b PrototypeWithQuality
 local function is_proto_with_quality_matching(a, b)
-    return a.name == b.name and a.quality == b.quality
+    return a ~= nil and b ~= nil
+        and a.name == b.name and a.quality == b.quality
 end
 
---- @param a FollowRule
---- @param b FollowRule
+--- @param a FollowRule Existing rule
+--- @param b FollowRule Matcher rule
 function focus_follow_rules.is_prerequisite_matching(a, b)
+    -- Don't match if existing rule has no target set
+    if a.target == nil
+        then return end
     if a.type ~= b.type
         then return end
     -- Double checked for luals type restriction sake

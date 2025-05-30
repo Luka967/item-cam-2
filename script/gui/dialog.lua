@@ -11,7 +11,7 @@ gui_dialog.gid = "dialog"
 --- @field name string
 
 --- @class CustomGuiDialogButtonStyle
---- @field caption string
+--- @field caption LocalisedString
 --- @field style string
 
 --- @class CustomGuiDialogInput
@@ -22,8 +22,8 @@ gui_dialog.gid = "dialog"
 
 --- @class CustomGuiDialogOptions
 --- @field player LuaPlayer
---- @field title string
---- @field caption string
+--- @field title LocalisedString
+--- @field caption LocalisedString
 --- @field back? boolean
 --- @field confirm? CustomGuiDialogButtonStyle
 --- @field remote CustomGuiDialogInput
@@ -43,7 +43,7 @@ function gui_dialog.open_for(options)
             name = "back",
             type = "button",
             style = "back_button",
-            caption = "Back"
+            caption = {"controls.back"}
         }
         table.insert(action_buttons, adding)
     end
@@ -89,7 +89,7 @@ function gui_dialog.open_for(options)
     })
 
     local gui_state = gui_custom.get_state(player.index, gui_dialog.gid)
-    --- @cast gui_state CustomGuiDialogInput
+    assert(gui_state ~= nil, "gui_custom state is nil for newly opened dialog")
     gui_state.window = options.remote.window
     gui_state.back = options.remote.back
     gui_state.confirm = options.remote.confirm

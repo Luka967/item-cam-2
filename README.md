@@ -22,7 +22,9 @@ If mod errors out while you're following something or it doesn't continue as you
 - Mining drills, assemblers, furnaces (recyclers), etc. with resource/recipe that has some item output
 - Inserters, chests, train cargo wagons
 - Logistic bots picking up and delivering items
-- Space Age content: plants, rockets with cargo, space platform hubs and their pods
+- Space Age: Plants and how they grow
+- Space Age: Rockets and their cargo pods
+- Space Age: Space platform hubs and their cargo pods
 
 ## Limitations
 - You can't watch the cargo pod processions. API limitation. Sorry!
@@ -31,7 +33,6 @@ If mod errors out while you're following something or it doesn't continue as you
 - Inserters and mining drills shuffling items on ground can't be tracked. Not yet
 
 ## Things that are planned to be trackable:
-- Fluids in general - fluid wagons, pumps
+- Fluids in general - pipes, fluid wagons, pumps, valves
 - Crafting machines with recipes that have only fluid output
 - Non-SA satellite's Space science pack output
-- Specific item coming out of crafting machine depending on conditions. For example, if you're doing scrap recycling first, idea is to tell Item Cam that you specifically want processing unit to get tracked first.

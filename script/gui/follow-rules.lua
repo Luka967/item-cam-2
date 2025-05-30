@@ -113,7 +113,7 @@ local function construct_item_select_crafter(existing)
     --- @type CustomGuiElement[]
     return {{
         type = "label",
-        caption = "If"
+        caption = {"gui-follow-rules.rule-if"}
     }, {
         type = "choose-elem-button",
         name = "rule-crafter-entity",
@@ -124,7 +124,7 @@ local function construct_item_select_crafter(existing)
         end
     }, {
         type = "label",
-        caption = "crafted"
+        caption = {"gui-follow-rules.rule-crafted"}
     }, {
         type = "choose-elem-button",
         name = "rule-crafter-recipe",
@@ -137,7 +137,7 @@ local function construct_item_select_crafter(existing)
         end
     }, {
         type = "label",
-        caption = ", then follow first"
+        caption = {"gui-follow-rules.rule-then-first"}
     }, {
         type = "choose-elem-button",
         name = "rule-target",
@@ -156,7 +156,7 @@ local function construct_item_select_out_of_container(existing)
     --- @type CustomGuiElement[]
     return {{
         type = "label",
-        caption = "If watching"
+        caption = {"gui-follow-rules.rule-if-watching"}
     }, {
         type = "choose-elem-button",
         name = "rule-container-entity",
@@ -167,7 +167,7 @@ local function construct_item_select_out_of_container(existing)
         end
     }, {
         type = "label",
-        caption = ", then follow first"
+        caption = {"gui-follow-rules.rule-then-first"}
     }, {
         type = "choose-elem-button",
         name = "rule-target",
@@ -179,7 +179,7 @@ local function construct_item_select_out_of_container(existing)
         end
     }, {
         type = "label",
-        caption = "taken out"
+        caption = {"gui-follow-rules.rule-taken-out"}
     }}
 end
 
@@ -188,7 +188,7 @@ local function construct_item_select_resource_result(existing)
     --- @type CustomGuiElement[]
     return {{
         type = "label",
-        caption = "If"
+        caption = {"gui-follow-rules.rule-if"}
     }, {
         type = "choose-elem-button",
         name = "rule-mining-result-entity",
@@ -199,7 +199,7 @@ local function construct_item_select_resource_result(existing)
         end
     }, {
         type = "label",
-        caption = "mined"
+        caption = {"gui-follow-rules.rule-drill-mined-resource"}
     }, {
         type = "choose-elem-button",
         name = "rule-mining-result-resource",
@@ -212,7 +212,7 @@ local function construct_item_select_resource_result(existing)
         end
     }, {
         type = "label",
-        caption = ", then follow first"
+        caption = {"gui-follow-rules.rule-then-first"}
     }, {
         type = "choose-elem-button",
         name = "rule-target",
@@ -231,7 +231,7 @@ local function construct_item_select_plant_result(existing)
     --- @type CustomGuiElement[]
     return {{
         type = "label",
-        caption = "If"
+        caption = {"gui-follow-rules.rule-if"}
     }, {
         type = "choose-elem-button",
         name = "rule-plant-result-entity",
@@ -242,7 +242,7 @@ local function construct_item_select_plant_result(existing)
         end
     }, {
         type = "label",
-        caption = "got mined, then follow first"
+        caption = {"", {"gui-follow-rules.rule-plant-got-mined"}, {"gui-follow-rules.rule-then-first"}}
     }, {
         type = "choose-elem-button",
         name = "rule-target",
@@ -277,7 +277,21 @@ local function construct_item_select(rule_entry, idx)
             type = "label",
             name = "rule-index",
             style = "ic2gui_followrules_order_label",
-            caption = "#"..idx
+            caption = {"gui-follow-rules.rule-index", tostring(idx)}
+        }, {
+            type = "flow",
+            name = "rule-move-buttons",
+            direction = "vertical",
+            style = "ic2gui_followrules_order_buttons",
+            children = {{
+                type = "sprite-button",
+                name = "rule-move-up",
+                style = "ic2gui_followrules_entry_move_up_button",
+            }, {
+                type = "sprite-button",
+                name = "rule-move-down",
+                style = "ic2gui_followrules_entry_move_down_button"
+            }}
         }},
         tags = {idx = idx}
     }
@@ -289,10 +303,6 @@ local function construct_item_select(rule_entry, idx)
     local right_side = {{
         type = "empty-widget",
         style = "ic2gui_followrules_entry_empty_space"
-    }, {
-        type = "empty-widget",
-        style = "ic2gui_followrules_entry_draggable_space",
-        name = "drag-rule"
     }, {
         type = "sprite-button",
         style = "ic2gui_followrules_entry_delete_button",
@@ -313,11 +323,11 @@ local add_button = {
     style = "ic2gui_followrules_entry_add_button",
     name = "add-rule",
     items = {
-        "+ Add rule",
-        "When crafter finished recipe",
-        "When taken out of container",
-        "When resource node mined",
-        "When plant mined"
+        {"", "+ ", {"gui-follow-rules.rule-add-placeholder"}},
+        {"gui-follow-rules.rule-add-crafter-finished-recipe"},
+        {"gui-follow-rules.rule-add-taken-out-of-container"},
+        {"gui-follow-rules.rule-add-resource-mined"},
+        {"gui-follow-rules.rule-add-plant-mined"}
     },
     selected_index = 1
 }
@@ -328,6 +338,20 @@ local add_button = {
 --- @field original_rules? FollowRule[]
 --- @field modified_rules FollowRule[]
 
+--- This actually sets index depending on element position, so it assumes it's accurate
+--- @param gui_state CustomGuiFollowRulesState
+--- @param scroll_pane LuaGuiElement
+local function update_indices(gui_state, scroll_pane)
+    local cnt = #gui_state.modified_rules
+    for idx = 1, cnt do
+        local rule_frame = scroll_pane.children[idx]
+        rule_frame["rule-index"].caption = {"gui-follow-rules.rule-index", tostring(idx)}
+        rule_frame["rule-move-buttons"]["rule-move-up"].enabled = idx ~= 1
+        rule_frame["rule-move-buttons"]["rule-move-down"].enabled = idx ~= cnt
+        rule_frame.tags = {idx = idx}
+    end
+end
+
 --- @param player LuaPlayer
 function gui_follow_rules.open_for(player)
     local original_rules = state.follow_rules[player.index]
@@ -336,12 +360,12 @@ function gui_follow_rules.open_for(player)
     local scroll_pane_children = utility.mapped(modified_rules, construct_item_select)
     table.insert(scroll_pane_children, add_button)
 
-    player.opened = gui_generator.generate_at(player.gui.screen, {
+    local opened_gui = gui_generator.generate_at(player.gui.screen, {
         gid = gui_follow_rules.gid,
         is_window_root = true,
         type = "frame",
         name = gui_follow_rules.gid,
-        caption = "Item Cam 2 follow rules",
+        caption = {"gui-follow-rules.title"},
         direction = "vertical",
         postfix = function (elem)
             elem.auto_center = true
@@ -353,21 +377,22 @@ function gui_follow_rules.open_for(player)
         }, {
             type = "label",
             style = "ic2gui_followrules_detail_label_semibold",
-            caption = "Evaluation behavior:"
+            caption = {"gui-follow-rules.evaluation-behavior"}
         }, {
             type = "label",
             style = "ic2gui_followrules_detail_label",
-            caption = {"gui-follow-rules.evaluation-detail-1"}
+            caption = {"gui-follow-rules.evaluation-rule-1"}
         }, {
             type = "label",
             style = "ic2gui_followrules_detail_label",
-            caption = {"gui-follow-rules.evaluation-detail-2"}
+            caption = {"gui-follow-rules.evaluation-rule-2"}
         }, {
             type = "label",
             style = "ic2gui_followrules_detail_label_last",
-            caption = {"gui-follow-rules.evaluation-detail-3"}
+            caption = {"gui-follow-rules.evaluation-rule-3"}
         }, {
             type = "scroll-pane",
+            name = "rule-scroll-pane",
             style = "ic2gui_followrules_entry_list_scroll",
             vertical_scroll_policy = "always",
             horizontal_scroll_policy = "never",
@@ -380,7 +405,7 @@ function gui_follow_rules.open_for(player)
                 type = "button",
                 name = "action-row-discard",
                 style = "red_back_button",
-                caption = "Discard",
+                caption = {"gui.discard"},
             }, {
                 type = "empty-widget",
                 name = "action-row-drag",
@@ -392,24 +417,47 @@ function gui_follow_rules.open_for(player)
                 type = "button",
                 name = "action-row-save",
                 style = "confirm_button",
-                caption = "Save"
+                caption = {"gui.save"},
+                tooltip = {"gui-follow-rules.save"}
             }}
         }}
     })
+    player.opened = opened_gui
     player.set_shortcut_toggled(const.name_options_shortcut, true)
 
     local gui_state = gui_custom.get_state(player.index, gui_follow_rules.gid)
+    assert(gui_state ~= nil, "gui_custom state is nil for newly opened follow rules")
     gui_state.original_rules = original_rules
     gui_state.modified_rules = modified_rules
+
+    -- The gui while being generated is unaware of rule count.
+    -- We already have rule element state being updated in two places.
+    -- That should be consolidated into a create-then-update aswell,
+    -- instead of it being janky copy paste...
+    update_indices(gui_state, opened_gui["rule-scroll-pane"])
 end
 
---- @param scroll_pane LuaGuiElement
-local function update_indices(scroll_pane)
-    for idx, child in ipairs(scroll_pane.children) do
-        if child.name == "add-rule"
-            then break end
-        child["rule-index"].caption = "#"..idx
-    end
+---@param gui_state CustomGuiFollowRulesState
+---@param scroll_pane LuaGuiElement
+---@param from_idx integer
+---@param to_idx integer
+---@param inc integer
+local function swap_indices(gui_state, scroll_pane, from_idx, to_idx, inc)
+    if from_idx == to_idx
+        then return end
+
+    local cur_idx = from_idx
+    repeat
+        scroll_pane.swap_children(cur_idx, cur_idx + inc)
+
+        local tmp = gui_state.modified_rules[cur_idx + inc]
+        gui_state.modified_rules[cur_idx + inc] = gui_state.modified_rules[cur_idx]
+        gui_state.modified_rules[cur_idx] = tmp
+
+        cur_idx = cur_idx + inc
+    until cur_idx == to_idx
+
+    update_indices(gui_state, scroll_pane)
 end
 
 function gui_follow_rules.register_event_handlers()
@@ -458,11 +506,11 @@ function gui_follow_rules.register_event_handlers()
             gui_generator.set_interactible(gui_state.window, false)
             gui_dialog.open_for({
                 player = gui_state.player,
-                title = "Confirmation",
-                caption = "There are unconfirmed changes.",
+                title = {"gui.confirmation"},
+                caption = {"generic-unconfirmed-changes"},
                 back = true,
                 confirm = {
-                    caption = "Discard changes",
+                    caption = {"discard-changes"},
                     style = "red_confirm_button"
                 },
                 remote = {
@@ -477,7 +525,6 @@ function gui_follow_rules.register_event_handlers()
         --- @param gui_state CustomGuiFollowRulesState
         click = function (event, gui_state)
             gui_follow_rules.close_for(event.player_index)
-            game.print("save")
             state.follow_rules[event.player_index] = gui_state.modified_rules
         end
     }, {
@@ -487,6 +534,8 @@ function gui_follow_rules.register_event_handlers()
             local selected_index = event.element.selected_index
             if selected_index == 1
                 then return end
+            gui_state.modified = true
+
             local new_rule_type = ({
                 [2] = "item-out-of-crafter",
                 [3] = "item-out-of-container",
@@ -501,25 +550,61 @@ function gui_follow_rules.register_event_handlers()
             local new_rule_elem = construct_item_select(new_rule, new_index)
             new_rule_elem.index = new_index
             gui_generator.generate_at(event.element.parent, new_rule_elem)
-
-            gui_state.modified = true
+            update_indices(gui_state, event.element.parent)
             event.element.selected_index = 1
         end
     }, {
         name = "delete-rule",
         --- @param gui_state CustomGuiFollowRulesState
         click = function (event, gui_state)
-            local idx = event.element.tags.idx
-            --- @cast idx number
-
             -- Button -> rule frame -> scroll pane
             local scroll_pane = event.element.parent.parent
+            local idx = event.element.parent.tags.idx
             --- @cast scroll_pane -nil
-            event.element.parent.destroy()
-            update_indices(scroll_pane)
+            --- @cast idx number
 
             gui_state.modified = true
+
+            event.element.parent.destroy()
             table.remove(gui_state.modified_rules, idx)
+            update_indices(gui_state, scroll_pane)
+        end
+    }, {
+        name = "rule-move-up",
+        --- @param gui_state CustomGuiFollowRulesState
+        click = function (event, gui_state)
+            -- Button -> buttons flow -> rule frame
+            local old_idx = event.element.parent.parent.tags.idx
+            local scroll_pane = event.element.parent.parent.parent
+            --- @cast old_idx number
+            --- @cast scroll_pane -nil
+
+            gui_state.modified = true
+
+            local new_idx = old_idx - 1
+            if event.shift then new_idx = new_idx - 4 end
+            if event.control then new_idx = 1 end
+            new_idx = math.max(new_idx, 1)
+
+            swap_indices(gui_state, scroll_pane, old_idx, new_idx, -1)
+        end
+    }, {
+        name = "rule-move-down",
+        --- @param gui_state CustomGuiFollowRulesState
+        click = function (event, gui_state)
+            local old_idx = event.element.parent.parent.tags.idx
+            local scroll_pane = event.element.parent.parent.parent
+            --- @cast old_idx number
+            --- @cast scroll_pane -nil
+
+            gui_state.modified = true
+
+            local new_idx = old_idx + 1
+            if event.shift then new_idx = new_idx + 4 end
+            if event.control then new_idx = #gui_state.modified_rules end
+            new_idx = math.min(new_idx, #gui_state.modified_rules)
+
+            swap_indices(gui_state, scroll_pane, old_idx, new_idx, 1)
         end
     }, {
         name = "rule-crafter-entity",

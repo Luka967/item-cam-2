@@ -28,8 +28,7 @@ function create.item_in_container(focus, entity, item)
     local type = "item-in-container"
     if entity.type == "rocket-silo" then
         type = "item-in-rocket-silo"
-    end
-    if #entity.cargo_hatches > 0 then
+    elseif #entity.cargo_hatches > 0 then
         type = "item-in-container-with-cargo-hatches"
     end
 

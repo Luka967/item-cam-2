@@ -28,9 +28,7 @@ If mod errors out while you're following something or it doesn't continue as you
 
 ## Limitations
 - You can't watch the cargo pod processions. API limitation. Sorry!
-- You can't select specific item to follow when it comes out of a recipe with multiple results. Not yet
 - Focus tracker doesn't know about when item spoils in container. Not yet
-- Inserters and mining drills shuffling items on ground can't be tracked. Not yet
 
 ## Things that are planned to be trackable:
 - Fluids in general - pipes, fluid wagons, pumps, valves

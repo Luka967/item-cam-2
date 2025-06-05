@@ -67,9 +67,14 @@ const.is_belt = {
     ["lane-splitter"] = true,
     ["underground-belt"] = true,
     ["linked-belt"] = true,
-    ["loader"] = true
+    ["loader"] = true,
+    ["loader-1x1"] = true,
 }
-const.all_belt = {"transport-belt", "splitter", "lane-splitter", "underground-belt", "linked-belt", "loader"}
+const.all_belt = {
+    "transport-belt", "underground-belt", "linked-belt",
+    "splitter", "lane-splitter",
+    "loader", "loader-1x1"
+}
 
 const.missing_inventory_defines = {
     agricultural_tower_input = 2,

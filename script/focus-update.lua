@@ -57,6 +57,7 @@ local belt_advance_strategy = {
         end
     end
 }
+belt_advance_strategy["loader-1x1"] = belt_advance_strategy["loader"]
 
 --- @param focus FocusInstance
 --- @param handle LuaEntity

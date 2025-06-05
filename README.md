@@ -17,17 +17,13 @@ If mod errors out while you're following something or it doesn't continue as you
 `Debug focus tracker` has tick-precise information on the focus tracker's behavior and will make debugging way easier.
 
 ## Things it can follow right now
-- Belts, splitters, undergrounds, any and all sideload configurations
-- Modded loaders, linked belts, lane splitters
-- Mining drills, assemblers, furnaces (recyclers), etc. with resource/recipe that has some item output
-- Inserters, chests, train cargo wagons
-- Logistic bots picking up and delivering items
-- Space Age: Plants and how they grow
-- Space Age: Rockets and their cargo pods
-- Space Age: Space platform hubs and their cargo pods
+- Belts, splitters, undergrounds, any and all sideload configurations, modded loaders, linked belts, lane splitters
+- Inserters, chests, train cargo wagons, logistic bots picking up and delivering items
+- Mining drills, assemblers, furnaces (recyclers), etc. with ability to follow specific item out of multiple results
+- Space Age: Plants and how they grow, rockets and their cargo pods, space platform hubs and their cargo pods
 
 ## Limitations
-- You can't watch the cargo pod processions. API limitation. Sorry!
+- You can't watch the cargo pod processions. It may be possible but was not visited yet
 - Focus tracker doesn't know about when item spoils in container. Not yet
 
 ## Things that are planned to be trackable:

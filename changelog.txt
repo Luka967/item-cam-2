@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.9.1
+Date: 2025-06-05
+  Bugfixes:
+    - Fixed crash / unexpected behavior when focus tracker switches onto / out of 1x1 loader
+---------------------------------------------------------------------------------------------------
 Version: 0.9.0
 Date: 2025-05-24
   Major Features:

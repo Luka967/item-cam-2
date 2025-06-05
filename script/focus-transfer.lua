@@ -109,7 +109,7 @@ function transfer_to.loader_nearby(focus, surface, force, search_area, item_wl, 
 
     return utility.first(surface.find_entities_filtered({
         area = search_area,
-        type = "loader",
+        type = {"loader", "loader-1x1"},
         force = force
     }), function (candidate)
         if restrictions.source ~= nil and (

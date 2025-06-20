@@ -424,10 +424,43 @@ tick_map["end-lab"] = function ()
     -- End of the line
 end
 
---- @param focus FocusInstance
 --- @param handle LuaEntity
-tick_map["unit"] = function (focus, handle)
-    -- Do nothing
+--- @param pin PinUnit
+tick_map["unit"] = function (_, handle, pin)
+    if pin.highest_commandable ~= nil and not pin.highest_commandable.valid then
+        pin.highest_commandable = nil
+    end
+    if pin.highest_commandable == nil and handle.commandable ~= nil then
+        pin.highest_commandable = handle.commandable
+    end
+    local new_highest_commandable = pin.highest_commandable
+    while new_highest_commandable.parent_group ~= nil do
+        utility.debug("watchdog updated: walked to new parent commandable")
+        new_highest_commandable = new_highest_commandable.parent_group
+    end
+    pin.highest_commandable = new_highest_commandable
+end
+
+--- @param focus FocusInstance
+--- @param pin PinUnit
+handle_invalid_map["unit"] = function (focus, _, pin)
+    focus.watching.valid = false
+    if pin.highest_commandable == nil
+        then return end
+
+    if not pin.highest_commandable.is_unit_group
+        then return end
+    utility.debug("watchdog changing: handle died")
+
+    local next_unit_to_watch = utility.first(pin.highest_commandable.members, function (entry)
+        return entry.valid and entry or nil
+    end)
+    if next_unit_to_watch == nil
+        then return end
+
+    utility.debug("watchdog changing: found next unit within commandable")
+    focus.watching.valid = true
+    focus.watching = watchdog.create.unit(focus, next_unit_to_watch)
 end
 
 --- @class SmoothingDefinition

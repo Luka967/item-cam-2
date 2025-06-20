@@ -1,4 +1,14 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.9.2
+Date: 2025-06-20
+  Minor Features:
+    - Added setting "Camera stopping opens last position in Remote view", enabled by default
+  Changes:
+    - Player camera is now a fullscreen camera element, instead of having you turn ghost and get teleported around
+    - Player camera no longer responds to player zooming in/out. In a future update this will be controlled by an opinionated autozoom
+  Bugfixes:
+    - Fixed watching something with camera, such as enemies, being able to chart undiscovered chunks (https://mods.factorio.com/mod/item-cam-2/discussion/6841a90cf6ff161653f7d9a2)
+---------------------------------------------------------------------------------------------------
 Version: 0.9.1
 Date: 2025-06-05
   Bugfixes:

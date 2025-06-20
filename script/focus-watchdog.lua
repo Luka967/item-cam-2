@@ -272,6 +272,9 @@ function create.end_lab(focus, entity)
     }
 end
 
+--- @class PinUnit
+--- @field highest_commandable? LuaCommandable
+
 --- @param focus FocusInstance
 --- @param entity LuaEntity
 function create.unit(focus, entity)
@@ -280,7 +283,8 @@ function create.unit(focus, entity)
         type = "unit",
         valid = true,
         handle = entity,
-        item_wl = {}
+        item_wl = {},
+        pin = {}
     }
 end
 
@@ -318,7 +322,7 @@ local get_position = {
     ["plant-growing"] = just_get_handle_selection_box,
     ["item-coming-from-agricultural-tower"] = just_get_handle_pos,
     ["end-lab"] = just_get_handle_pos,
-    ["unit"] = just_get_handle_pos
+    ["unit"] = just_get_handle_pos -- TODO: Follow the commandable group
 }
 
 --- @param watchdog FocusWatchdog

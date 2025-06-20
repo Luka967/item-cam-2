@@ -36,18 +36,15 @@ local function filter_crafter_recipe(elem_value)
     local categories = prototypes.entity[elem_value.name].crafting_categories
     if categories == nil
         then return {} end
-    local ret = utility.keys_mapped(categories, function (entry)
-        --- @type RecipePrototypeFilter
+    categories = {recycling = true}
+    local ret = utility.keys_mapped_flattened(categories, function (entry)
+        --- @type RecipePrototypeFilter[]
         return {
-            filter = "category",
-            category = entry,
-            mode = "or"
+            {filter = "hidden", mode = "or"},
+            {filter = "category", category = entry, mode = "and"}
         }
     end)
-    table.insert(ret, {
-        filter = "hidden",
-        mode = "or"
-    })
+    ret[1].mode = nil
     return ret
 end
 

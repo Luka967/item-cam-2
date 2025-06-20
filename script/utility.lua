@@ -2,7 +2,7 @@ local const = require("const")
 local utility = {}
 
 function utility.debug(...)
-    if not settings.global["debug-tracker"].value
+    if not settings.global[const.name_setting_debug_tracker].value
         then return end
     print(game.tick, ...)
 end
@@ -11,7 +11,7 @@ end
 --- @param position MapPosition
 --- @param color Color.0
 function utility.debug_pos(surface, position, color)
-    if not settings.global["debug-tracker"].value
+    if not settings.global[const.name_setting_debug_tracker].value
         then return end
     rendering.draw_circle({
         surface = surface,
@@ -27,7 +27,7 @@ end
 --- @param entity LuaEntity
 --- @param color Color.0
 function utility.debug_item_on_line(item_on_line, line_idx, entity, color)
-    if not settings.global["debug-tracker"].value
+    if not settings.global[const.name_setting_debug_tracker].value
         then return end
     rendering.draw_circle({
         surface = entity.surface,
@@ -42,7 +42,7 @@ end
 --- @param area BoundingBox
 --- @param color Color.0
 function utility.debug_area(surface, area, color)
-    if not settings.global["debug-tracker"].value
+    if not settings.global[const.name_setting_debug_tracker].value
         then return end
     rendering.draw_rectangle({
         surface = surface,

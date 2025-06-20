@@ -19,6 +19,9 @@ const.gui_id = {
     pick_first_item = 1
 }
 
+const.name_setting_debug_tracker = "debug-tracker"
+const.name_setting_camera_stopping_opens_remote = "camera-stopping-opens-remote"
+
 const.name_options_shortcut = "item-cam-options"
 const.name_shortcut = "item-cam"
 const.name_selection_item = "item-cam"

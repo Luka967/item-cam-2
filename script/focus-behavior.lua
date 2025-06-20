@@ -15,10 +15,7 @@ local focus_behavior = {}
 --- @class FocusControllablePlayer
 --- @field type "player"
 --- @field player LuaPlayer
---- @field previous_controller defines.controllers
---- @field previous_surface_idx integer
---- @field previous_position MapPosition
---- @field previous_character? LuaEntity
+--- @field camera_element? LuaGuiElement
 
 --- @class FocusControllableCameraGui
 --- @field type "gui-camera"
@@ -30,7 +27,6 @@ local focus_behavior = {}
 --- @field controlling FocusControllable[]
 --- @field smoothing? FocusSmoothingState If set, smooth_position chases position at some rate instead of directly copying it
 --- @field watching? FocusWatchdog
---- @field watching_new? FocusWatchdog
 --- @field follow_rules? FollowRule[]
 --- @field follow_rules_cnt? number
 --- @field follow_rules_start_idx? number
@@ -63,11 +59,7 @@ function focus_behavior.add_controlling_player(focus, controlling)
     --- @type FocusControllablePlayer
     local adding = {
         type = "player",
-        player = controlling,
-        previous_controller = controlling.physical_controller_type,
-        previous_surface_idx = controlling.physical_surface_index or controlling.surface_index,
-        previous_position = controlling.physical_position or controlling.position,
-        previous_character = controlling.character,
+        player = controlling
     }
     table.insert(focus.controlling, adding)
 end
@@ -95,31 +87,13 @@ function focus_behavior.assign_target_initial(focus, watching)
 end
 
 --- @param player LuaPlayer
---- @param to boolean
-local function player_toggle_gui_elements(player, to)
-    player.game_view_settings.show_controller_gui = to
-    player.game_view_settings.show_entity_tooltip = to
-    player.game_view_settings.show_minimap = to
-    player.game_view_settings.show_research_info = to
-    player.game_view_settings.show_side_menu = to
-end
-
---- @param focus FocusInstance
---- @param player LuaPlayer
-local function player_start_controlling(focus, player)
-    if player.character ~= nil then
-        player.character.walking_state = {
-            direction = player.character.walking_state.direction,
-            walking = false
-        }
-    end
-
-    player.set_controller({type = defines.controllers.ghost})
-    player_toggle_gui_elements(player, false)
-
-    -- Set initial
-    player.teleport(focus.position, focus.surface)
-    player.zoom = 2
+--- @param camera_elem LuaGuiElement
+local function set_player_camera_size(player, camera_elem)
+    camera_elem.position.x = 0
+    camera_elem.position.y = 0
+    local res = player.display_resolution
+    camera_elem.style.width = res.width / player.display_scale / player.display_density_scale
+    camera_elem.style.height = res.height / player.display_scale / player.display_density_scale
 end
 
 --- @param focus FocusInstance
@@ -130,7 +104,16 @@ function focus_behavior.start_following(focus)
 
     for _, controlling in ipairs(focus.controlling) do
         if controlling.type == "player" then
-            player_start_controlling(focus, controlling.player)
+            local camera_elem = controlling.player.gui.screen.add({
+                type = "camera",
+                name = "item-cam-2-camera",
+                position = focus.position,
+                surface_index = focus.surface.index,
+                zoom = 2
+            })
+            set_player_camera_size(controlling.player, camera_elem)
+
+            controlling.camera_element = camera_elem
         else
             controlling.element.position = focus.position
             controlling.element.surface_index = focus.surface.index
@@ -139,41 +122,24 @@ function focus_behavior.start_following(focus)
 end
 
 --- @param focus FocusInstance
---- @param controlling FocusControllablePlayer
-local function player_stop_controlling(focus, controlling)
-    local player = controlling.player
-
-    -- Teleport player to proper surface before reassigning controller
-    if game.get_surface(controlling.previous_surface_idx) == nil then
-        player.print("Previous surface is gone. I don't know where to teleport you")
-        player.teleport({0, 0}, "nauvis")
-    else
-        player.teleport(controlling.previous_position, controlling.previous_surface_idx)
-    end
-
-    if controlling.previous_controller == defines.controllers.editor then
-        player.toggle_map_editor()
-    elseif
-        controlling.previous_controller == defines.controllers.character
-        or controlling.previous_controller == defines.controllers.remote
-    then
-        player.set_controller({
-            type = defines.controllers.character,
-            character = controlling.previous_character
-        })
-    else
-        player.set_controller({type = controlling.previous_controller})
-    end
-    player_toggle_gui_elements(player, true)
-end
-
---- @param focus FocusInstance
 function focus_behavior.stop_following(focus)
     focus.valid = false
 
     for _, controlling in ipairs(focus.controlling) do
         if controlling.type == "player" then
-            player_stop_controlling(focus, controlling)
+            local camera_elem_zoom = controlling.camera_element.zoom
+            controlling.camera_element.destroy()
+            controlling.camera_element = nil
+
+            local player_settings = settings.get_player_settings(controlling.player)
+            if player_settings[const.name_setting_camera_stopping_opens_remote].value then
+                controlling.player.set_controller({
+                    type = defines.controllers.remote,
+                    position = focus.smooth_position,
+                    surface = focus.surface
+                })
+                controlling.player.zoom = camera_elem_zoom
+            end
         end
     end
 end
@@ -238,7 +204,12 @@ function focus_behavior.update(focus)
     -- Control the controlling
     for _, controlling in ipairs(focus.controlling) do
         if controlling.type == "player" then
-            controlling.player.teleport(focus.smooth_position, focus.surface)
+            local camera_elem = controlling.camera_element
+            assert(camera_elem ~= nil, "camera_element for controlling player is nil")
+
+            set_player_camera_size(controlling.player, camera_elem)
+            camera_elem.position = focus.smooth_position
+            camera_elem.surface_index = focus.surface.index
         else
             controlling.element.position = focus.smooth_position
             controlling.element.surface_index = focus.surface.index

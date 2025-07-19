@@ -243,7 +243,7 @@ end
 tick_map["item-in-rocket-silo"] = function (focus, handle)
     if handle.rocket ~= nil and handle.rocket_silo_status >= defines.rocket_silo_status.launch_starting then
         utility.debug("watchdog changing: rocket_silo_status launch_started")
-        focus.watching =  watchdog.create.item_in_rocket(focus, handle.rocket, focus.watching.item_wl.item)
+        focus.watching = watchdog.create.item_in_rocket(handle.rocket, focus.watching.item_wl.item)
     end
 
     return item_in_container(focus, handle)
@@ -254,7 +254,7 @@ end
 tick_map["item-in-rocket"] = function (focus, handle)
     if handle.cargo_pod ~= nil and handle.cargo_pod.cargo_pod_state == "ascending" then
         utility.debug("watchdog changing: cargo_pod_state ascending")
-        focus.watching =  watchdog.create.item_in_cargo_pod(focus, handle.cargo_pod, focus.watching.item_wl.item)
+        focus.watching = watchdog.create.item_in_cargo_pod(handle.cargo_pod, focus.watching.item_wl.item)
     end
 end
 
@@ -330,7 +330,7 @@ environment_changed_map["item-in-container-with-cargo-hatches"] = function (focu
     if first_item == nil
         then return end
 
-    focus.watching =  watchdog.create.item_in_cargo_pod(focus, cause_entity, utility.item_proto(first_item))
+    focus.watching =  watchdog.create.item_in_cargo_pod(cause_entity, utility.item_proto(first_item))
 end
 
 --- @param focus FocusInstance
@@ -353,7 +353,7 @@ environment_changed_map["seed-in-agricultural-tower"] = function (focus, handle,
     if cause_entity.type ~= "plant"
         then return end
     if utility.contains(handle.owned_plants, cause_entity) then
-        focus.watching =  watchdog.create.plant_growing(focus, cause_entity)
+        focus.watching = watchdog.create.plant_growing(cause_entity)
     end
 end
 
@@ -410,7 +410,7 @@ handle_invalid_map["plant-growing"] = function (focus, _, pin)
             best_guess.position,
             focus.watching.item_wl,
             {source = best_guess, swinging_towards = true}
-        ) or watchdog.create.item_coming_from_agricultural_tower(focus, best_guess)
+        ) or watchdog.create.item_coming_from_agricultural_tower(best_guess)
 end
 
 --- @param focus FocusInstance
@@ -460,7 +460,7 @@ handle_invalid_map["unit"] = function (focus, _, pin)
 
     utility.debug("watchdog changing: found next unit within commandable")
     focus.watching.valid = true
-    focus.watching = watchdog.create.unit(focus, next_unit_to_watch)
+    focus.watching = watchdog.create.unit(next_unit_to_watch)
 end
 
 --- @class SmoothingDefinition

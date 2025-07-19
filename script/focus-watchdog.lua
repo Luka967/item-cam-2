@@ -9,9 +9,8 @@ local utility = require("utility")
 
 local create = {}
 
---- @param focus FocusInstance
 --- @param entity LuaEntity
-function create.item_on_ground(focus, entity)
+function create.item_on_ground(entity)
     --- @type FocusWatchdog
     return {
         type = "item-on-ground",
@@ -21,10 +20,9 @@ function create.item_on_ground(focus, entity)
     }
 end
 
---- @param focus FocusInstance
 --- @param entity LuaEntity
 --- @param item PrototypeWithQuality
-function create.item_in_container(focus, entity, item)
+function create.item_in_container(entity, item)
     local type = "item-in-container"
     if entity.type == "rocket-silo" then
         type = "item-in-rocket-silo"
@@ -46,11 +44,10 @@ end
 --- @field id integer
 --- @field line_idx integer
 
---- @param focus FocusInstance
 --- @param item_on_line DetailedItemOnLine
 --- @param line_idx integer
 --- @param belt_entity LuaEntity
-function create.item_on_belt(focus, item_on_line, line_idx, belt_entity)
+function create.item_on_belt(item_on_line, line_idx, belt_entity)
     --- @type FocusWatchdog
     return {
         type = "item-on-belt",
@@ -66,9 +63,8 @@ function create.item_on_belt(focus, item_on_line, line_idx, belt_entity)
     }
 end
 
---- @param focus FocusInstance
 --- @param entity LuaEntity
-function create.item_in_inserter_hand(focus, entity)
+function create.item_in_inserter_hand(entity)
     assert(entity.held_stack.valid_for_read, "inserter has nothing in hand")
 
     --- @type FocusWatchdog
@@ -85,9 +81,8 @@ end
 --- @field expected_products? string[]
 --- @field announced_change? boolean
 
---- @param focus FocusInstance
 --- @param entity LuaEntity
-function create.item_in_crafting_machine(focus, entity)
+function create.item_in_crafting_machine(entity)
     --- @type FocusWatchdog
     return {
         type = "item-in-crafting-machine",
@@ -103,10 +98,9 @@ end
 --- @class PinItemHeldByRobot
 --- @field drop_target LuaEntity
 
---- @param focus FocusInstance
 --- @param entity LuaEntity
 --- @param item PrototypeWithQuality
-function create.item_held_by_robot(focus, entity, item)
+function create.item_held_by_robot(entity, item)
     local first_order = entity.robot_order_queue[1]
     local drop_target = first_order.target or first_order.secondary_target
     assert(drop_target, "robot has no drop target")
@@ -127,9 +121,8 @@ end
 --- @class PinItemComingFromMiningDrill
 --- @field tick_should_mine integer
 
---- @param focus FocusInstance
 --- @param entity LuaEntity
-function create.item_coming_from_mining_drill(focus, entity)
+function create.item_coming_from_mining_drill(entity)
     local mining_target = entity.mining_target
     assert(mining_target, "drill has no mining_target")
 
@@ -161,10 +154,9 @@ function create.item_coming_from_mining_drill(focus, entity)
     }
 end
 
---- @param focus FocusInstance
 --- @param entity LuaEntity
 --- @param item PrototypeWithQuality
-function create.item_in_rocket(focus, entity, item)
+function create.item_in_rocket(entity, item)
     --- @type FocusWatchdog
     return {
         type = "item-in-rocket",
@@ -177,10 +169,9 @@ end
 --- @class PinItemInCargoPod
 --- @field drop_target? LuaEntity
 
---- @param focus FocusInstance
 --- @param entity LuaEntity
 --- @param item PrototypeWithQuality
-function create.item_in_cargo_pod(focus, entity, item)
+function create.item_in_cargo_pod(entity, item)
     --- @type FocusWatchdog
     return {
         type = "item-in-cargo-pod",
@@ -192,9 +183,8 @@ function create.item_in_cargo_pod(focus, entity, item)
     }
 end
 
---- @param focus FocusInstance
 --- @param entity LuaEntity
-function create.item_coming_from_asteroid_collector(focus, entity)
+function create.item_coming_from_asteroid_collector(entity)
     --- @type FocusWatchdog
     return {
         type = "item-coming-from-asteroid-collector",
@@ -204,10 +194,9 @@ function create.item_coming_from_asteroid_collector(focus, entity)
     }
 end
 
---- @param focus FocusInstance
 --- @param entity LuaEntity
 --- @param item PrototypeWithQuality
-function create.seed_in_agricultural_tower(focus, entity, item)
+function create.seed_in_agricultural_tower(entity, item)
     --- @type FocusWatchdog
     return {
         type = "seed-in-agricultural-tower",
@@ -221,9 +210,8 @@ end
 --- @field last_tick_towers_nearby LuaEntity[]
 --- @field last_tick_crane_destinations MapPosition[]
 
---- @param focus FocusInstance
 --- @param entity LuaEntity
-function create.plant_growing(focus, entity)
+function create.plant_growing(entity)
     local mine_products = entity.prototype.mineable_properties.products
     assert(mine_products, "plant has no products")
 
@@ -248,9 +236,8 @@ function create.plant_growing(focus, entity)
     }
 end
 
---- @param focus FocusInstance
 --- @param entity LuaEntity
-function create.item_coming_from_agricultural_tower(focus, entity)
+function create.item_coming_from_agricultural_tower(entity)
     --- @type FocusWatchdog
     return {
         type = "item-coming-from-agricultural-tower",
@@ -260,9 +247,8 @@ function create.item_coming_from_agricultural_tower(focus, entity)
     }
 end
 
---- @param focus FocusInstance
 --- @param entity LuaEntity
-function create.end_lab(focus, entity)
+function create.end_lab(entity)
     --- @type FocusWatchdog
     return {
         type = "end-lab",
@@ -275,9 +261,8 @@ end
 --- @class PinUnit
 --- @field highest_commandable? LuaCommandable
 
---- @param focus FocusInstance
 --- @param entity LuaEntity
-function create.unit(focus, entity)
+function create.unit(entity)
     --- @type FocusWatchdog
     return {
         type = "unit",

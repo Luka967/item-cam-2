@@ -21,7 +21,7 @@ function transfer_to.item_on_ground(focus, surface, search_position, item_wl)
         then return end
     for _, candidate in ipairs(candidates) do
         if utility.is_item_filtered(candidate.stack, item_wl) then
-            return watchdog.create.item_on_ground(focus, candidates[1])
+            return watchdog.create.item_on_ground(candidates[1])
         end
     end
 end
@@ -71,7 +71,7 @@ function transfer_to.inserter_nearby(focus, surface, force, search_area, ref_pos
 
     if best_guess ~= nil then
         utility.debug_pos(surface, best_guess.position, const.__dc_min_pick)
-        return watchdog.create.item_in_inserter_hand(focus, best_guess)
+        return watchdog.create.item_in_inserter_hand(best_guess)
     end
 end
 
@@ -90,7 +90,7 @@ function transfer_to.newest_item_on_belt(focus, target_belt_entity, item_wl)
 
     if best_guess and line_idx then
         utility.debug_item_on_line(best_guess, line_idx, target_belt_entity, const.__dc_min_pick)
-        return watchdog.create.item_on_belt(focus, best_guess, line_idx, target_belt_entity)
+        return watchdog.create.item_on_belt(best_guess, line_idx, target_belt_entity)
     end
 end
 
@@ -163,7 +163,6 @@ function transfer_to.robot_nearby(focus, surface, force, search_area, ref_pos, i
         utility.debug_pos(surface, best_guess.position, const.__dc_min_pick)
 
         return watchdog.create.item_held_by_robot(
-            focus,
             best_guess,
             utility.item_proto(its_item_stack)
         )
@@ -179,10 +178,10 @@ function transfer_to.next(focus, entity, item_wl)
         return transfer_to.newest_item_on_belt(focus, entity, item_wl)
     end
     if entity_type == "inserter" then
-        return watchdog.create.item_in_inserter_hand(focus, entity)
+        return watchdog.create.item_in_inserter_hand(entity)
     end
     if const.is_crafting_machine[entity_type] then
-        return watchdog.create.item_in_crafting_machine(focus, entity)
+        return watchdog.create.item_in_crafting_machine(entity)
     end
     if const.container_inventory_idx[entity_type] then
         assert(item_wl.item or item_wl.items, "expected whitelist on item")
@@ -192,14 +191,10 @@ function transfer_to.next(focus, entity, item_wl)
 
         local first_applicable_stack = utility.first_item_stack_filtered(inventory, item_wl)
         if first_applicable_stack ~= nil then
-            return watchdog.create.item_in_container(
-                focus,
-                entity,
-                utility.item_proto(first_applicable_stack)
-            )
+            return watchdog.create.item_in_container(entity, utility.item_proto(first_applicable_stack))
         end
 
-        -- utility.debug("transfer_to.next: item from container was already taken by inserter")
+        utility.debug("transfer_to.next: item from container was already taken by inserter")
         return transfer_to.inserter_nearby(
             focus,
             entity.surface,
@@ -213,13 +208,13 @@ function transfer_to.next(focus, entity, item_wl)
     if entity_type == "agricultural-tower" then
         -- Happens only when it's inputted into. Output is triggered independently
         assert(item_wl.item, "expected whitelist on item")
-        return watchdog.create.seed_in_agricultural_tower(focus, entity, item_wl.item)
+        return watchdog.create.seed_in_agricultural_tower(entity, item_wl.item)
     end
     if entity_type == "lab" then
-        return watchdog.create.end_lab(focus, entity)
+        return watchdog.create.end_lab(entity)
     end
     if entity_type == "item-entity" then
-        return watchdog.create.item_on_ground(focus, entity)
+        return watchdog.create.item_on_ground(entity)
     end
 end
 
@@ -259,7 +254,7 @@ function transfer_to.drop_target(focus, entity, item_wl)
 
     if best_guess and line_idx then
         utility.debug_item_on_line(best_guess, line_idx, drop_target, const.__dc_min_pick)
-        return watchdog.create.item_on_belt(focus, best_guess, line_idx, drop_target)
+        return watchdog.create.item_on_belt(best_guess, line_idx, drop_target)
     end
 end
 

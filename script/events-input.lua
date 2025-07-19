@@ -6,6 +6,19 @@ local utility = require("utility")
 
 local gui_follow_rules = require("gui.follow-rules")
 
+--- @param player_idx integer
+local function get_focus_for_player(player_idx)
+    local focus = utility.first(state.focuses, function (entry)
+        if type(entry.tags) ~= "table"
+            then return end
+        if type(entry.tags.self_managed) ~= "boolean" or not entry.tags.self_managed
+            then return end
+        if type(entry.tags.player_idx) ~= "number" or entry.tags.player_idx ~= player_idx
+            then return end
+        return entry
+    end)
+end
+
 --- @param event EventData.on_player_selected_area
 local function start_item_cam(event)
     if event.item ~= const.name_selection_item
@@ -17,6 +30,10 @@ local function start_item_cam(event)
 
     player.clear_cursor()
 
+    local closest_selection = focus_select.closest(event.entities, utility.aabb_center(event.area))
+    if closest_selection == nil
+        then return end
+
     local new_focus = focus_behavior.create(state.follow_rules[player.index])
     new_focus.tags = {
         self_managed = true,
@@ -24,25 +41,13 @@ local function start_item_cam(event)
     }
     focus_behavior.add_controllable_player(new_focus, player)
 
-    local closest_selection = focus_select.closest(event.entities, utility.aabb_center(event.area))
-    if closest_selection == nil
-        then return end
-
     focus_behavior.assign_target_initial(new_focus, closest_selection)
     focus_behavior.start_following(new_focus)
 end
 
 --- @param player_idx integer
 local function stop_item_cam(player_idx)
-    local focus = utility.first(state.focuses, function (entry)
-        if type(entry.tags) ~= "table"
-            then return end
-        if type(entry.tags.self_managed) ~= "boolean" or not entry.tags.self_managed
-            then return end
-        if type(entry.tags.player_idx) ~= "number" or entry.tags.player_idx ~= player_idx
-            then return end
-        return entry
-    end)
+    local focus = get_focus_for_player(player_idx)
     if focus == nil
         then return end
     focus_behavior.stop_following(focus)
@@ -54,7 +59,7 @@ local function toggle_item_cam_shortcut(event)
     if player == nil
         then return end
 
-    if state.focuses[event.player_index] ~= nil then
+    if get_focus_for_player(event.player_index) ~= nil then
         stop_item_cam(event.player_index)
         return
     end

@@ -19,6 +19,9 @@ const.gui_id = {
     pick_first_item = 1
 }
 
+const.zoom_initial = 2
+const.zoom_minimum = 0.3
+
 const.name_setting_debug_tracker = "debug-tracker"
 const.name_setting_camera_stopping_opens_remote = "camera-stopping-opens-remote"
 

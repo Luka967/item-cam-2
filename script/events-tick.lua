@@ -46,7 +46,7 @@ end)
 local function tick_one_focus(focus_id)
     local focus = state.focuses[focus_id]
     if not focus.valid then
-        utility.debug("ambiguous tick_one_focus call for id "..focus_id.." whose focus is invalid")
+        utility.debug("??? tick_one_focus called on invalid focus id "..focus_id)
         state.focuses[focus_id] = nil
         return
     end

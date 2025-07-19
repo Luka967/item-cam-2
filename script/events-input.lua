@@ -22,7 +22,7 @@ local function start_item_cam(event)
         self_managed = true,
         player_idx = event.player_index
     }
-    focus_behavior.add_controlling_player(new_focus, player)
+    focus_behavior.add_controllable_player(new_focus, player)
 
     local closest_selection = focus_select.closest(event.entities, utility.aabb_center(event.area))
     if closest_selection == nil

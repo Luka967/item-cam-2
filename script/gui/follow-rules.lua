@@ -36,15 +36,15 @@ local function filter_crafter_recipe(elem_value)
     local categories = prototypes.entity[elem_value.name].crafting_categories
     if categories == nil
         then return {} end
-    categories = {recycling = true}
     local ret = utility.keys_mapped_flattened(categories, function (entry)
         --- @type RecipePrototypeFilter[]
         return {
+            {filter = "hidden", invert = true, mode = "or"},
+            {filter = "category", category = entry, mode = "and"},
             {filter = "hidden", mode = "or"},
             {filter = "category", category = entry, mode = "and"}
         }
     end)
-    ret[1].mode = nil
     return ret
 end
 
@@ -434,11 +434,11 @@ function gui_follow_rules.open_for(player)
     update_indices(gui_state, opened_gui["rule-scroll-pane"])
 end
 
----@param gui_state CustomGuiFollowRulesState
----@param scroll_pane LuaGuiElement
----@param from_idx integer
----@param to_idx integer
----@param inc integer
+--- @param gui_state CustomGuiFollowRulesState
+--- @param scroll_pane LuaGuiElement
+--- @param from_idx integer
+--- @param to_idx integer
+--- @param inc integer
 local function swap_indices(gui_state, scroll_pane, from_idx, to_idx, inc)
     if from_idx == to_idx
         then return end

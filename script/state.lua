@@ -1,6 +1,6 @@
 local state = {
     --- @type integer
-    focus_new_id = 1,
+    focus_new_id = nil,
     --- @type table<integer, FocusInstance>
     focuses = nil,
     --- @type table<integer, FollowRule[]|nil>
@@ -24,6 +24,13 @@ function state.retrieve_from_storage()
     state.follow_rules = storage.follow_rules
     state.env_changed_next_tick = storage.env_changed_next_tick
     state.gui_state = storage.gui_state
+end
+
+function state.get_next_focus_id()
+    local id = state.focus_new_id
+    state.focus_new_id = state.focus_new_id + 1
+    storage.focus_new_id = state.focus_new_id
+    return id
 end
 
 return state

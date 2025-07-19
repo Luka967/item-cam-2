@@ -38,8 +38,7 @@ local controllables = {
 
 --- @param follow_rules? FollowRule[]
 function focus_behavior.create(follow_rules)
-    local id = state.focus_new_id
-    state.focus_new_id = id + 1
+    local id = state.get_next_focus_id()
 
     --- @type FocusInstance
     local ret = {

@@ -8,14 +8,14 @@ local gui_follow_rules = require("gui.follow-rules")
 
 --- @param player_idx integer
 local function get_focus_for_player(player_idx)
-    local focus = utility.first(state.focuses, function (entry)
-        if type(entry.tags) ~= "table"
+    return utility.first(state.focuses, function (candidate)
+        if type(candidate.tags) ~= "table"
             then return end
-        if type(entry.tags.self_managed) ~= "boolean" or not entry.tags.self_managed
+        if type(candidate.tags.self_managed) ~= "boolean" or not candidate.tags.self_managed
             then return end
-        if type(entry.tags.player_idx) ~= "number" or entry.tags.player_idx ~= player_idx
+        if type(candidate.tags.player_idx) ~= "number" or candidate.tags.player_idx ~= player_idx
             then return end
-        return entry
+        return candidate
     end)
 end
 
@@ -59,7 +59,8 @@ local function toggle_item_cam_shortcut(event)
     if player == nil
         then return end
 
-    if get_focus_for_player(event.player_index) ~= nil then
+    local focus = get_focus_for_player(event.player_index)
+    if focus ~= nil then
         stop_item_cam(event.player_index)
         return
     end

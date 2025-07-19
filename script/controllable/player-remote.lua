@@ -1,5 +1,5 @@
 --- @module "const"
-local const = require("const")
+local const = require("__item-cam-2__.script.const")
 
 --- @class FocusControllablePlayerRemote
 --- @field type "player-remote"
@@ -30,6 +30,7 @@ function controllable_player_remote.start(controllable, focus)
         start_position = focus.position,
         surface = focus.surface
     })
+    controllable.player.zoom = const.zoom_initial
 end
 
 --- @param controllable FocusControllablePlayerRemote

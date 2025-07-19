@@ -1,5 +1,5 @@
 --- @module "const"
-local const = require("const")
+local const = require("__item-cam-2__.script.const")
 
 --- @class (exact) FocusControllablePlayer
 --- @field type "player"
@@ -43,7 +43,7 @@ function controllable_player.start(controllable, focus)
         name = "item-cam-2-camera",
         position = focus.position,
         surface_index = focus.surface.index,
-        zoom = const.zoom_initial,
+        zoom = const.zoom_initial
     })
     controllable.camera = camera
 

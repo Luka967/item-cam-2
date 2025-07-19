@@ -1,5 +1,5 @@
 --- @module "const"
-local const = require("const")
+local const = require("__item-cam-2__.script.const")
 
 --- @class (exact) FocusControllableGuiCamera
 --- @field type "gui-camera"
@@ -26,6 +26,7 @@ end
 --- @param focus FocusInstance
 function controllable_gui_camera.start(controllable, focus)
     controllable_gui_camera.update(controllable, focus)
+    controllable.elem.zoom = const.zoom_initial
 end
 
 --- @param controllable FocusControllableGuiCamera

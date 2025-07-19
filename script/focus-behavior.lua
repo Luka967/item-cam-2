@@ -102,15 +102,14 @@ end
 
 --- @param focus FocusInstance
 function focus_behavior.stop_following(focus)
-    focus.valid = false
-    focus.running = false
-
     if focus.running then
         for _, controllable in ipairs(focus.controlling) do
             controllables[controllable.type].stop(controllable)
         end
     end
 
+    focus.valid = false
+    focus.running = false
     state.focuses[focus.id] = nil
 end
 
@@ -170,7 +169,7 @@ function focus_behavior.update(focus)
 
     -- Control the controlling
     for _, controllable in ipairs(focus.controlling) do
-        controllables[controllable].update(controllable, focus)
+        controllables[controllable.type].update(controllable, focus)
     end
 end
 

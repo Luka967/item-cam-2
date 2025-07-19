@@ -26,16 +26,22 @@ local function start_item_cam(event)
 
     focus_behavior.assign_target_initial(new_focus, closest_selection)
     focus_behavior.start_following(new_focus)
-    state.focuses[event.player_index] = new_focus
 end
 
 --- @param player_idx integer
 local function stop_item_cam(player_idx)
-    local focus = state.focuses[player_idx]
+    local focus = utility.first(state.focuses, function (entry)
+        if type(entry.tag) ~= "table"
+            then return end
+        if type(entry.tag.self_managed) ~= "boolean" or not entry.tag.self_managed
+            then return end
+        if type(entry.tag.player_idx) ~= "number" or entry.tag.player_idx ~= player_idx
+            then return end
+        return entry
+    end)
     if focus == nil
         then return end
     focus_behavior.stop_following(focus)
-    state.focuses[player_idx] = nil
 end
 
 --- @param event EventData.CustomInputEvent|EventData.on_lua_shortcut

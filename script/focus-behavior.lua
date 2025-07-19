@@ -3,6 +3,7 @@ local utility = require("utility")
 local focus_update = require("focus-update")
 local focus_watchdog = require("focus-watchdog")
 local focus_follow_rules = require("focus-follow-rules")
+local state = require("state")
 
 local focus_behavior = {}
 
@@ -36,9 +37,13 @@ local controllables = {
 
 --- @param follow_rules? FollowRule[]
 function focus_behavior.create(follow_rules)
+    local id = state.focus_new_id
+    state.focus_new_id = id + 1
+
     --- @type FocusInstance
     local ret = {
-        valid = false,
+        id = id,
+        valid = true,
         controlling = {},
         position = {x = 0, y = 0},
         smooth_position = {x = 0, y = 0},
@@ -49,6 +54,8 @@ function focus_behavior.create(follow_rules)
         ret.follow_rules_cnt = #follow_rules
         ret.follow_rules_start_idx = 1
     end
+
+    state.focuses[id] = ret
     return ret
 end
 

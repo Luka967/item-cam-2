@@ -42,12 +42,12 @@ script.on_event(defines.events.on_tick, function ()
     foo.destroy()
 end)
 
---- @param player_idx integer
-local function tick_one_focus(player_idx)
-    local focus = state.focuses[player_idx]
+--- @param focus_id integer
+local function tick_one_focus(focus_id)
+    local focus = state.focuses[focus_id]
     if not focus.valid then
-        utility.debug("ambiguous tick_one_focus call for player_idx "..player_idx.." whose focus is invalid")
-        state.focuses[player_idx] = nil
+        utility.debug("ambiguous tick_one_focus call for id "..focus_id.." whose focus is invalid")
+        state.focuses[focus_id] = nil
         return
     end
 
@@ -60,7 +60,6 @@ local function tick_one_focus(player_idx)
 
     if focus.valid
         then return end
-    state.focuses[player_idx] = nil
     focus_behavior.stop_following(focus)
 
     local gps_tag = "[gps="..focus.position.x..","..focus.position.y..","..focus.surface.name.."]"
@@ -71,8 +70,8 @@ end
 script.on_event(defines.events.on_object_destroyed, function (event)
     if next_tick_registration_number ~= event.registration_number
         then return end
-    for player_idx in pairs(state.focuses) do
-        tick_one_focus(player_idx)
+    for focus_id in pairs(state.focuses) do
+        tick_one_focus(focus_id)
     end
 
     -- Clear env changed array

@@ -144,14 +144,15 @@ for prototype in pairs(const.is_robot) do
     map[prototype] = robot_holding_item
 end
 
---- @param focus FocusInstance
---- @param all_selected LuaEntity[]
+local focus_select = {}
+
+--- @param candidates LuaEntity[]
 --- @param center MapPosition
-return function (focus, all_selected, center)
-    local all_candidates = utility.mapped_flattened(all_selected, function (entry)
+function focus_select.closest(candidates, center)
+    local all_candidates = utility.mapped_flattened(candidates, function (entry)
         local fn = map[entry.type]
         if fn ~= nil then
-            return fn(focus, entry)
+            return fn(entry)
         end
     end)
     local closest_candidate = utility.minimum_of(all_candidates, function (entry)
@@ -165,3 +166,23 @@ return function (focus, all_selected, center)
 
     return closest_candidate
 end
+
+--- @param entity LuaEntity
+function focus_select.entity(entity)
+    local fn = map[entity.type]
+    if fn == nil
+        then return end
+    local candidates = fn(entity)
+    if candidates == nil
+        then return end
+    return candidates[1]
+end
+
+--- @param surface LuaSurface
+--- @param position MapPosition
+function focus_select.at_position(surface, position)
+    local entities = surface.find_entities(utility.aabb_around(position, 1, 1))
+    return focus_select.closest(entities, position)
+end
+
+return focus_select

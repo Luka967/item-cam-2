@@ -25,7 +25,7 @@ local controllables = {
 --- @field id integer
 --- @field valid boolean
 --- @field running boolean
---- @field tag? table|string|number|boolean
+--- @field tags? table<string, AnyBasic>
 --- @field controlling FocusControllable[]
 --- @field smoothing? FocusSmoothingState If set, smooth_position chases position at some rate instead of directly copying it
 --- @field watching? FocusWatchdog

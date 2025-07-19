@@ -18,6 +18,10 @@ local function start_item_cam(event)
     player.clear_cursor()
 
     local new_focus = focus_behavior.create(state.follow_rules[player.index])
+    new_focus.tags = {
+        self_managed = true,
+        player_idx = event.player_index
+    }
     focus_behavior.add_controlling_player(new_focus, player)
 
     local closest_selection = focus_select.closest(event.entities, utility.aabb_center(event.area))
@@ -31,11 +35,11 @@ end
 --- @param player_idx integer
 local function stop_item_cam(player_idx)
     local focus = utility.first(state.focuses, function (entry)
-        if type(entry.tag) ~= "table"
+        if type(entry.tags) ~= "table"
             then return end
-        if type(entry.tag.self_managed) ~= "boolean" or not entry.tag.self_managed
+        if type(entry.tags.self_managed) ~= "boolean" or not entry.tags.self_managed
             then return end
-        if type(entry.tag.player_idx) ~= "number" or entry.tag.player_idx ~= player_idx
+        if type(entry.tags.player_idx) ~= "number" or entry.tags.player_idx ~= player_idx
             then return end
         return entry
     end)

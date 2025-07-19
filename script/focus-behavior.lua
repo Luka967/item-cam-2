@@ -12,18 +12,17 @@ local focus_behavior = {}
 --- @field mul? number
 --- @field final_tick integer
 
---- @class FocusControllablePlayer
---- @field type "player"
---- @field player LuaPlayer
---- @field camera_element? LuaGuiElement
+--- @alias FocusControllable FocusControllablePlayerRemote|FocusControllablePlayer|FocusControllableGuiCamera
 
---- @class FocusControllableCameraGui
---- @field type "gui-camera"
---- @field element LuaGuiElement
-
---- @alias FocusControllable FocusControllablePlayer|FocusControllableCameraGui
+local controllables = {
+    ["gui-camera"] = require("controllable.gui-camera"),
+    ["player-remote"] = require("controllable.player-remote"),
+    ["player"] = require("controllable.player")
+}
 
 --- @class FocusInstance
+--- @field id integer
+--- @field tag? table|string|number|boolean
 --- @field controlling FocusControllable[]
 --- @field smoothing? FocusSmoothingState If set, smooth_position chases position at some rate instead of directly copying it
 --- @field watching? FocusWatchdog
@@ -55,24 +54,20 @@ end
 
 --- @param focus FocusInstance
 --- @param controlling LuaPlayer
-function focus_behavior.add_controlling_player(focus, controlling)
-    --- @type FocusControllablePlayer
-    local adding = {
-        type = "player",
-        player = controlling
-    }
-    table.insert(focus.controlling, adding)
+function focus_behavior.add_controllable_player_remote(focus, controlling)
+    table.insert(focus.controlling, controllables["player-remote"].create(controlling))
+end
+
+--- @param focus FocusInstance
+--- @param controlling LuaPlayer
+function focus_behavior.add_controllable_player(focus, controlling)
+    table.insert(focus.controlling, controllables["player"].create(controlling))
 end
 
 --- @param focus FocusInstance
 --- @param controlling LuaGuiElement
-function focus_behavior.add_controlling_camera(focus, controlling)
-    --- @type FocusControllableCameraGui
-    local adding = {
-        type = "gui-camera",
-        element = controlling
-    }
-    table.insert(focus.controlling, adding)
+function focus_behavior.add_controllable_camera(focus, controlling)
+    table.insert(focus.controlling, controllables["gui-camera"].create(controlling))
 end
 
 --- @param focus FocusInstance
@@ -86,38 +81,12 @@ function focus_behavior.assign_target_initial(focus, watching)
     focus_follow_rules.apply_matching(focus)
 end
 
---- @param player LuaPlayer
---- @param camera_elem LuaGuiElement
-local function set_player_camera_size(player, camera_elem)
-    camera_elem.position.x = 0
-    camera_elem.position.y = 0
-    local res = player.display_resolution
-    camera_elem.style.width = res.width / player.display_scale / player.display_density_scale
-    camera_elem.style.height = res.height / player.display_scale / player.display_density_scale
-end
-
 --- @param focus FocusInstance
 function focus_behavior.start_following(focus)
     assert(focus.watching ~= nil, "focus instance has no initial watchdog set")
 
-    focus.valid = true
-
-    for _, controlling in ipairs(focus.controlling) do
-        if controlling.type == "player" then
-            local camera_elem = controlling.player.gui.screen.add({
-                type = "camera",
-                name = "item-cam-2-camera",
-                position = focus.position,
-                surface_index = focus.surface.index,
-                zoom = 2
-            })
-            set_player_camera_size(controlling.player, camera_elem)
-
-            controlling.camera_element = camera_elem
-        else
-            controlling.element.position = focus.position
-            controlling.element.surface_index = focus.surface.index
-        end
+    for _, controllable in ipairs(focus.controlling) do
+        controllables[controllable.type].start(controllable, focus)
     end
 end
 
@@ -125,23 +94,11 @@ end
 function focus_behavior.stop_following(focus)
     focus.valid = false
 
-    for _, controlling in ipairs(focus.controlling) do
-        if controlling.type == "player" then
-            local camera_elem_zoom = controlling.camera_element.zoom
-            controlling.camera_element.destroy()
-            controlling.camera_element = nil
-
-            local player_settings = settings.get_player_settings(controlling.player)
-            if player_settings[const.name_setting_camera_stopping_opens_remote].value then
-                controlling.player.set_controller({
-                    type = defines.controllers.remote,
-                    position = focus.smooth_position,
-                    surface = focus.surface
-                })
-                controlling.player.zoom = camera_elem_zoom
-            end
-        end
+    for _, controllable in ipairs(focus.controlling) do
+        controllables[controllable.type].stop(controllable)
     end
+
+    state.focuses[focus.id] = nil
 end
 
 --- @param focus FocusInstance
@@ -171,11 +128,8 @@ end
 
 --- @param focus FocusInstance
 function focus_behavior.update(focus)
-    utility.filtered_in_place(focus.controlling, function (entry)
-        if entry.type == "player" and entry.player.valid
-            then return true end
-        if entry.type == "gui-camera" and entry.element.valid
-            then return true end
+    utility.filtered_in_place(focus.controlling, function (controllable)
+        return controllables[controllable.type].valid(controllable)
     end)
 
     if #focus.controlling == 0 then
@@ -202,18 +156,8 @@ function focus_behavior.update(focus)
     update_smooth_position(focus)
 
     -- Control the controlling
-    for _, controlling in ipairs(focus.controlling) do
-        if controlling.type == "player" then
-            local camera_elem = controlling.camera_element
-            assert(camera_elem ~= nil, "camera_element for controlling player is nil")
-
-            set_player_camera_size(controlling.player, camera_elem)
-            camera_elem.position = focus.smooth_position
-            camera_elem.surface_index = focus.surface.index
-        else
-            controlling.element.position = focus.smooth_position
-            controlling.element.surface_index = focus.surface.index
-        end
+    for _, controllable in ipairs(focus.controlling) do
+        controllables[controllable].update(controllable, focus)
     end
 end
 

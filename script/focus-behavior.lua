@@ -23,6 +23,8 @@ local controllables = {
 
 --- @class FocusInstance
 --- @field id integer
+--- @field valid boolean
+--- @field running boolean
 --- @field tag? table|string|number|boolean
 --- @field controlling FocusControllable[]
 --- @field smoothing? FocusSmoothingState If set, smooth_position chases position at some rate instead of directly copying it
@@ -33,7 +35,6 @@ local controllables = {
 --- @field position MapPosition
 --- @field smooth_position MapPosition
 --- @field surface LuaSurface
---- @field valid boolean
 
 --- @param follow_rules? FollowRule[]
 function focus_behavior.create(follow_rules)
@@ -44,6 +45,7 @@ function focus_behavior.create(follow_rules)
     local ret = {
         id = id,
         valid = true,
+        running = false,
         controlling = {},
         position = {x = 0, y = 0},
         smooth_position = {x = 0, y = 0},
@@ -92,6 +94,8 @@ end
 function focus_behavior.start_following(focus)
     assert(focus.watching ~= nil, "focus instance has no initial watchdog set")
 
+    focus.running = true
+
     for _, controllable in ipairs(focus.controlling) do
         controllables[controllable.type].start(controllable, focus)
     end
@@ -100,9 +104,12 @@ end
 --- @param focus FocusInstance
 function focus_behavior.stop_following(focus)
     focus.valid = false
+    focus.running = false
 
-    for _, controllable in ipairs(focus.controlling) do
-        controllables[controllable.type].stop(controllable)
+    if focus.running then
+        for _, controllable in ipairs(focus.controlling) do
+            controllables[controllable.type].stop(controllable)
+        end
     end
 
     state.focuses[focus.id] = nil

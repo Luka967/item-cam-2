@@ -2,7 +2,7 @@ local const = require("script.const")
 
 data:extend({{
     name = const.name_selection_item,
-    localised_description = "shortcut.item-cam",
+    localised_description = {"shortcut-description.item-cam"},
     type = "selection-tool",
     icon = "__item-cam-2__/graphics/icons/item-cam.png",
     flags = {"not-stackable", "only-in-cursor", "spawnable"},
@@ -23,7 +23,7 @@ data:extend({{
 data:extend({{
     name = const.name_shortcut,
     type = "shortcut",
-    localised_description = "shortcut.item-cam",
+    localised_description = {"shortcut-description.item-cam"},
     icon = "__item-cam-2__/graphics/icons/item-cam.png",
     small_icon = "__item-cam-2__/graphics/icons/item-cam.png",
     action = "lua",

@@ -154,7 +154,7 @@ remote.add_interface("item-cam-2", {
     end,
 
     --- @param focus_id integer
-    focus_stop = function (focus_id)
-        focus_behavior.stop_following(get_focus_assertive(focus_id))
+    focus_destroy = function (focus_id)
+        focus_behavior.destroy(get_focus_assertive(focus_id))
     end
 })

@@ -1,4 +1,4 @@
-local remote_interface = "item-cam"
+local remote_interface = "item-cam-2"
 
 --- @class (exact) FocusInstanceRemote
 --- @field id integer
@@ -110,7 +110,7 @@ end
 ---
 --- Throws if focus instance is already invalid.
 function focus_instance:destroy()
-    remote.call(remote_interface, "focus_is_running", self.id)
+    remote.call(remote_interface, "focus_destroy", self.id)
 end
 
 --- Create a new focus instance. The returned object holds an ID

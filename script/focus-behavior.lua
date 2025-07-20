@@ -101,7 +101,7 @@ function focus_behavior.start_following(focus)
 end
 
 --- @param focus FocusInstance
-function focus_behavior.stop_following(focus)
+function focus_behavior.destroy(focus)
     if focus.running then
         for _, controllable in ipairs(focus.controlling) do
             controllables[controllable.type].stop(controllable)

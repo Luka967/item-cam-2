@@ -50,7 +50,7 @@ local function stop_item_cam(player_idx)
     local focus = get_focus_for_player(player_idx)
     if focus == nil
         then return end
-    focus_behavior.stop_following(focus)
+    focus_behavior.destroy(focus)
 end
 
 --- @param event EventData.CustomInputEvent|EventData.on_lua_shortcut

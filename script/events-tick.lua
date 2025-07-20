@@ -50,6 +50,8 @@ local function tick_one_focus(focus_id)
         state.focuses[focus_id] = nil
         return
     end
+    if not focus.running
+        then return end
 
     for _, env_changed_entity in ipairs(state.env_changed_next_tick) do
         focus_update.environment_changed(focus, env_changed_entity)
@@ -60,7 +62,7 @@ local function tick_one_focus(focus_id)
 
     if focus.valid
         then return end
-    focus_behavior.stop_following(focus)
+    focus_behavior.destroy(focus)
 
     local gps_tag = "[gps="..focus.position.x..","..focus.position.y..","..focus.surface.name.."]"
     local tell_str = "lost focus, last known was "..last_type.." at "..gps_tag

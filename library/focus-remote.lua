@@ -100,9 +100,10 @@ end
 --- Throws if focus instance is running.
 ---
 --- Starting with no controllables added will mark the focus instance invalid this or next tick.
-function focus_instance:start_from_entity()
+--- @param entity LuaEntity
+function focus_instance:start_from_entity(entity)
     --- @type boolean
-    return remote.call(remote_interface, "focus_is_running", self.id)
+    return remote.call(remote_interface, "focus_start_from_entity", self.id, entity)
 end
 
 --- Destroy this focus instance.
@@ -111,8 +112,6 @@ end
 function focus_instance:destroy()
     remote.call(remote_interface, "focus_is_running", self.id)
 end
-
-local library = {}
 
 --- Create a new focus instance. The returned object holds an ID
 --- through which remote access to Item Cam 2's internals is available.
@@ -125,12 +124,10 @@ local library = {}
 --- Methods `:valid()` and `:running()` can be safely used even when reference is invalid.
 --- Any other method call will throw.
 --- @param follow_rules? FollowRule[]
-function library.create_focus(follow_rules)
+return function (follow_rules)
     local ret = remote.call(remote_interface, "focus_create", follow_rules)
-    --- @cast ret FocusInstance
+    --- @cast ret FocusInstanceRemote
 
     setmetatable(ret, focus_instance_meta)
     return ret
 end
-
-return library

@@ -38,7 +38,10 @@ end
 remote.add_interface("item-cam-2", {
     --- @param follow_rules? FollowRule[]
     focus_create = function (follow_rules)
-        return focus_behavior.create(follow_rules).id
+        --- @type FocusInstanceRemote
+        return {
+            id = focus_behavior.create(follow_rules).id
+        }
     end,
 
     --- @param focus_id integer

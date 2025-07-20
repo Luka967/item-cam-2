@@ -37,7 +37,7 @@ function focus_instance:set_tags(value)
     return self
 end
 
---- Allow a LuaPlayer to be controlled by this focus instance.
+--- Add a LuaPlayer to be controlled by this focus instance.
 --- This mode turns on player's remote view, with position and zoom managed by Item Cam 2.
 ---
 --- Calling while focus instance is running will throw.
@@ -51,7 +51,7 @@ function focus_instance:add_controllable_player_remote(player)
     return self
 end
 
---- Allow a LuaPlayer to be controlled by this focus instance. This mode creates a `LuaGuiElement` managed by Item Cam 2
+--- Add a LuaPlayer to be controlled by this focus instance. This mode creates a `LuaGuiElement` managed by Item Cam 2
 --- which will overlap the player's entire screen.
 ---
 --- Throws if focus instance is running.
@@ -65,7 +65,7 @@ function focus_instance:add_controllable_player(player)
     return self
 end
 
---- Allow a `LuaGuiElement` of type camera to be controlled by this focus instance.
+--- Add a `LuaGuiElement` of type camera to be controlled by this focus instance.
 ---
 --- Throws if focus instance is running.
 ---
@@ -84,7 +84,7 @@ end
 ---
 --- Throws if focus instance is running.
 ---
---- Starting with no controllables added will mark the focus instance invalid this or next tick.
+--- Successful start with no controllables added will mark the focus instance invalid this or next tick.
 --- @param surface SurfaceIdentification
 --- @param position MapPosition
 --- @return boolean
@@ -99,7 +99,7 @@ end
 ---
 --- Throws if focus instance is running.
 ---
---- Starting with no controllables added will mark the focus instance invalid this or next tick.
+--- Successful start with no controllables added will mark the focus instance invalid this or next tick.
 --- @param entity LuaEntity
 function focus_instance:start_from_entity(entity)
     --- @type boolean

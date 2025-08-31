@@ -111,6 +111,15 @@ function focus_behavior.destroy(focus)
     focus.valid = false
     focus.running = false
     state.focuses[focus.id] = nil
+
+    utility.raise_event(const.events.on_focus_destroyed, {
+        focus_id = focus.id,
+        was_running = focus.running,
+        previous_target = focus.running and focus.watching.handle or nil,
+        surface = focus.running and focus.surface or nil,
+        position = focus.running and focus.position or nil,
+        smooth_position = focus.smooth_position
+    })
 end
 
 --- @param focus FocusInstance

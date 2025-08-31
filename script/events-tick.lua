@@ -69,18 +69,38 @@ local function tick_one_focus(focus_id)
     utility.debug(tell_str)
 end
 
+local function run_destroy_calls()
+    local focuses_to_destroy = state.focuses_to_destroy
+    local cnt = #focuses_to_destroy
+    for i = 1, cnt do
+        focus_behavior.destroy(state.focuses[focuses_to_destroy[i]])
+    end
+    for i = 1, cnt do
+        focuses_to_destroy[i] = nil
+    end
+end
+
 script.on_event(defines.events.on_object_destroyed, function (event)
     if next_tick_registration_number ~= event.registration_number
         then return end
+
+    local env_changed = state.env_changed_next_tick
+
+    -- Destroy leftovers from previous tick
+    run_destroy_calls()
+
     for focus_id in pairs(state.focuses) do
         tick_one_focus(focus_id)
     end
 
     -- Clear env changed array
-    local env_changed_cnt = #state.env_changed_next_tick
+    local env_changed_cnt = #env_changed
     for i = 1, env_changed_cnt do
-        state.env_changed_next_tick[i] = nil
+        env_changed[i] = nil
     end
+
+    -- Destroy leftovers from this tick
+    run_destroy_calls()
 end)
 
 script.on_event(defines.events.on_script_trigger_effect, function (event)

@@ -491,4 +491,11 @@ function utility.crafter_recipe_proto(entity)
     end
 end
 
+--- @overload fun(event_name: ic2_events.on_focus_switch, data: EventDataStub.on_focus_switch)
+--- @overload fun(event_name: ic2_events.on_focus_destroyed, data: EventDataStub.on_focus_destroyed)
+utility.raise_event = function (event_name, data)
+    --- @diagnostic disable-next-line: param-type-mismatch
+    script.raise_event(event_name, data)
+end
+
 return utility

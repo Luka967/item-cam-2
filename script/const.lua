@@ -1,5 +1,10 @@
 local const = {}
 
+if prototypes then
+    --- @module "library.event-ids"
+    const.events = require("__item-cam-2__.library.event-ids")
+end
+
 const.__d_ttl = 30
 const.__dc_bounding = {255, 0, 0}
 const.__dc_bounding_real = {0, 0, 255}

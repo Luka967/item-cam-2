@@ -575,6 +575,16 @@ local function apply_fn(map, focus, cause_entity)
     utility.debug("focus watchdog changed from "..last_watching.type.." to "..focus.watching.type)
     follow_rules.apply_matching(focus)
 
+    utility.raise_event(const.events.on_focus_switch, {
+        focus_id = focus.id,
+        previous_target = last_watching.handle,
+        new_target = focus.watching.handle,
+        surface = focus.surface,
+        position = focus.position,
+        smooth_position = focus.smooth_position,
+        cause_entity = cause_entity
+    })
+
     extend_smooth(focus, map_smooth_speed_out, last_watching.type)
     extend_smooth(focus, map_smooth_speed_in, focus.watching.type)
     return true

@@ -3,6 +3,8 @@ local state = {
     focus_new_id = nil,
     --- @type table<integer, FocusInstance>
     focuses = nil,
+    --- @type integer[]
+    focuses_to_destroy = nil,
     --- @type table<integer, FollowRule[]|nil>
     follow_rules = nil,
     --- @type LuaEntity[]
@@ -13,6 +15,7 @@ local state = {
 function state.init_storage()
     storage.focus_new_id = storage.focus_new_id or 1
     storage.focuses = storage.focuses or {}
+    storage.focuses_to_destroy = storage.focuses_to_destroy or {}
     storage.follow_rules = storage.follow_rules or {}
     storage.env_changed_next_tick = storage.env_changed_next_tick or {}
     storage.gui_state = storage.gui_state or {}
@@ -21,6 +24,7 @@ end
 function state.retrieve_from_storage()
     state.focus_new_id = storage.focus_new_id
     state.focuses = storage.focuses
+    state.focuses_to_destroy = storage.focuses_to_destroy or {}
     state.follow_rules = storage.follow_rules
     state.env_changed_next_tick = storage.env_changed_next_tick
     state.gui_state = storage.gui_state

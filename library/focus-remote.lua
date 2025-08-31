@@ -100,6 +100,9 @@ end
 ---
 --- Throws if focus instance is running.
 ---
+--- The `on_focus_switch` event will be raised every time a new entity is chosen to be followed,
+--- depending on follow rules and default expected behavior.
+---
 --- Successful start with no controllables added will mark the focus instance invalid this or next tick.
 --- @param entity LuaEntity
 function focus_instance:start_from_entity(entity)
@@ -107,7 +110,7 @@ function focus_instance:start_from_entity(entity)
     return remote.call("item-cam-2", "focus_start_from_entity", self.id, entity)
 end
 
---- Destroy this focus instance.
+--- Destroy this focus instance. Raises `on_focus_destroyed` event this or next tick.
 ---
 --- Throws if focus instance is already invalid.
 function focus_instance:destroy()

@@ -1,6 +1,14 @@
 local const = require("script.const")
 
 data:extend({{
+    name = "on_focus_switch",
+    type = "custom-event"
+}, {
+    name = "on_focus_destroyed",
+    type = "custom-event"
+}})
+
+data:extend({{
     name = const.name_selection_item,
     localised_description = {"shortcut-description.item-cam"},
     type = "selection-tool",

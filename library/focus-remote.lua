@@ -1,5 +1,3 @@
-local remote_interface = "item-cam-2"
-
 --- @class (exact) FocusInstanceRemote
 --- @field id integer
 local focus_instance = {}
@@ -13,27 +11,30 @@ script.register_metatable("ic2-focus_instance_meta", focus_instance_meta)
 --- Check if this focus instance is still valid. This is always safe to call.
 function focus_instance:valid()
     --- @type boolean
-    return remote.call(remote_interface, "focus_is_valid", self.id)
+    return remote.call("item-cam-2", "focus_is_valid", self.id)
 end
 
 --- Check if this focus instance is actively following something. This is always safe to call.
 function focus_instance:running()
     --- @type boolean
-    return remote.call(remote_interface, "focus_is_running", self.id)
+    return remote.call("item-cam-2", "focus_is_running", self.id)
 end
 
 --- Returns the tag table associated with this focus instance.
 ---
---- The returned table is a copy. Modifying its keys will not persist.
+--- The returned table is a copy. Modifications to keys will not persist.
 --- `:set_tags()` may be called with this same table.
+--- @return table<string, AnyBasic>?
 function focus_instance:get_tags()
     --- @type table<string, AnyBasic>?
-    return remote.call(remote_interface, "focus_get_tags", self.id)
+    return remote.call("item-cam-2", "focus_get_tags", self.id)
 end
 
---- Sets the tag table associated with this focus instance.
+--- Sets the tag table associated with this focus instance. Returns self.
+--- @param value table<string, AnyBasic>?
+--- @return FocusInstanceRemote
 function focus_instance:set_tags(value)
-    remote.call(remote_interface, "focus_set_tags", self.id, value)
+    remote.call("item-cam-2", "focus_set_tags", self.id, value)
     return self
 end
 
@@ -47,7 +48,7 @@ end
 --- @param player LuaPlayer
 function focus_instance:add_controllable_player_remote(player)
     --- @type nil
-    remote.call(remote_interface, "focus_add_controllable_player_remote", self.id, player)
+    remote.call("item-cam-2", "focus_add_controllable_player_remote", self.id, player)
     return self
 end
 
@@ -61,7 +62,7 @@ end
 --- @param player LuaPlayer
 function focus_instance:add_controllable_player(player)
     --- @type nil
-    remote.call(remote_interface, "focus_add_controllable_player", self.id, player)
+    remote.call("item-cam-2", "focus_add_controllable_player", self.id, player)
     return self
 end
 
@@ -74,7 +75,7 @@ end
 --- @param camera_elem LuaGuiElement
 function focus_instance:add_controllable_camera(camera_elem)
     --- @type nil
-    remote.call(remote_interface, "focus_add_controllable_player", self.id, camera_elem)
+    remote.call("item-cam-2", "focus_add_controllable_camera", self.id, camera_elem)
     return self
 end
 
@@ -90,7 +91,7 @@ end
 --- @return boolean
 function focus_instance:start_from_point(surface, position)
     --- @type boolean
-    return remote.call(remote_interface, "focus_start_from_point", self.id, surface, position)
+    return remote.call("item-cam-2", "focus_start_from_point", self.id, surface, position)
 end
 
 --- Start this focus instance from specified entity.
@@ -103,14 +104,14 @@ end
 --- @param entity LuaEntity
 function focus_instance:start_from_entity(entity)
     --- @type boolean
-    return remote.call(remote_interface, "focus_start_from_entity", self.id, entity)
+    return remote.call("item-cam-2", "focus_start_from_entity", self.id, entity)
 end
 
 --- Destroy this focus instance.
 ---
 --- Throws if focus instance is already invalid.
 function focus_instance:destroy()
-    remote.call(remote_interface, "focus_destroy", self.id)
+    remote.call("item-cam-2", "focus_destroy", self.id)
 end
 
 --- Create a new focus instance. The returned object holds an ID
@@ -125,7 +126,7 @@ end
 --- Any other method call will throw.
 --- @param follow_rules? FollowRule[]
 return function (follow_rules)
-    local ret = remote.call(remote_interface, "focus_create", follow_rules)
+    local ret = remote.call("item-cam-2", "focus_create", follow_rules)
     --- @cast ret FocusInstanceRemote
 
     setmetatable(ret, focus_instance_meta)

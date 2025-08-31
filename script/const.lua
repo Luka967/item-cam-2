@@ -19,11 +19,6 @@ const.__dc_min_cand = {255, 0, 0}
 const.__dc_min_pass = {255, 255, 0}
 const.__dc_min_pick = {0, 255, 0}
 
---- @enum GuiId
-const.gui_id = {
-    pick_first_item = 1
-}
-
 const.zoom_initial = 2
 const.zoom_minimum = 0.3
 

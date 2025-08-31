@@ -24,7 +24,6 @@ end
 ---
 --- The returned table is a copy. Modifications to keys will not persist.
 --- `:set_tags()` may be called with this same table.
---- @return table<string, AnyBasic>?
 function focus_instance:get_tags()
     --- @type table<string, AnyBasic>?
     return remote.call("item-cam-2", "focus_get_tags", self.id)
@@ -110,7 +109,11 @@ function focus_instance:start_from_entity(entity)
     return remote.call("item-cam-2", "focus_start_from_entity", self.id, entity)
 end
 
---- Destroy this focus instance. Raises `on_focus_destroyed` event this or next tick.
+--- Enqueues destroy for this focus instance.
+---
+--- If called within an event, the focus instance may remain valid and actually be destroyed this or next tick.
+---
+--- Raises `on_focus_destroyed` event this or next tick, during and after which it is invalid.
 ---
 --- Throws if focus instance is already invalid.
 function focus_instance:destroy()

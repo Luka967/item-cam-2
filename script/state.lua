@@ -5,7 +5,7 @@ local state = {
     focuses = nil,
     --- @type integer[]
     focuses_to_destroy = nil,
-    --- @type table<integer, FollowRule[]|nil>
+    --- @type table<integer, FollowRule[]?>
     follow_rules = nil,
     --- @type LuaEntity[]
     env_changed_next_tick = nil,

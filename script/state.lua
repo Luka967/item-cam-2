@@ -3,7 +3,7 @@ local state = {
     focus_new_id = nil,
     --- @type table<integer, FocusInstance>
     focuses = nil,
-    --- @type integer[]
+    --- @type table<integer, true?>
     focuses_to_destroy = nil,
     --- @type table<integer, FollowRule[]?>
     follow_rules = nil,

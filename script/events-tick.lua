@@ -71,12 +71,9 @@ end
 
 local function run_destroy_calls()
     local focuses_to_destroy = state.focuses_to_destroy
-    local cnt = #focuses_to_destroy
-    for i = 1, cnt do
-        focus_behavior.destroy(state.focuses[focuses_to_destroy[i]])
-    end
-    for i = 1, cnt do
-        focuses_to_destroy[i] = nil
+    for focus_id in pairs(focuses_to_destroy) do
+        focus_behavior.destroy(state.focuses[focus_id])
+        focuses_to_destroy[focus_id] = nil
     end
 end
 

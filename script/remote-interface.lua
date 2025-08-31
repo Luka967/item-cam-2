@@ -158,6 +158,6 @@ remote.add_interface("item-cam-2", {
         get_focus_assertive(focus_id) -- Make sure it exists
 
         -- Avoid event handler mutations. Wait for bulldozer
-        table.insert(state.focuses_to_destroy, focus_id)
+        state.focuses_to_destroy[focus_id] = true
     end
 })

@@ -118,7 +118,7 @@ function focus_behavior.destroy(focus)
         previous_target = focus.running and focus.watching.handle or nil,
         surface = focus.running and focus.surface or nil,
         position = focus.running and focus.position or nil,
-        smooth_position = focus.smooth_position
+        smooth_position = focus.running and focus.smooth_position or nil
     })
 end
 

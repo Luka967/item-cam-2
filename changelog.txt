@@ -1,10 +1,11 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.10.0
-Date: ???
+Date: 2025-08-31
   Bugfixes:
     - Fixed crafting machines (recycler) not showing hidden (item recycling) recipes
   Scripting:
-    - Added remote interface for other mods to use
+    - Added remote interface for other mods to use Item Cam 2's capabilities
+    - Added on_focus_switch and on_focus_destroyed events for other mods to listen to
 ---------------------------------------------------------------------------------------------------
 Version: 0.9.2
 Date: 2025-06-20

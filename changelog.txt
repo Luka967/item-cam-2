@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.10.1
+Date: 2025-09-27
+  Bugfixes:
+    - Fixed exiting item cam not working (https://mods.factorio.com/mod/item-cam-2/discussion/68d451395aa11fd227fdc6d6)
+  Scripting:
+    - player-remote controllable is now considered invalid if targeted player changed controller, i.e. exited remote view
+---------------------------------------------------------------------------------------------------
 Version: 0.10.0
 Date: 2025-08-31
   Bugfixes:

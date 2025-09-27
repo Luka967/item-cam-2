@@ -8,15 +8,16 @@ local gui_follow_rules = require("gui.follow-rules")
 
 --- @param player_idx integer
 local function get_focus_for_player(player_idx)
-    return utility.first(state.focuses, function (candidate)
-        if type(candidate.tags) ~= "table"
-            then return end
-        if type(candidate.tags.self_managed) ~= "boolean" or not candidate.tags.self_managed
-            then return end
-        if type(candidate.tags.player_idx) ~= "number" or candidate.tags.player_idx ~= player_idx
-            then return end
-        return candidate
-    end)
+    for _, focus in pairs(state.focuses) do
+        if
+            type(focus.tags) == "table"
+            and type(focus.tags.self_managed) == "boolean" and focus.tags.self_managed
+            and type(focus.tags.player_idx) == "number" and focus.tags.player_idx == player_idx
+        then
+            return focus
+        end
+    end
+    return nil -- For union with nil
 end
 
 --- @param event EventData.on_player_selected_area
@@ -112,3 +113,5 @@ script.on_event(defines.events.on_lua_shortcut, function (event)
 end)
 
 script.on_event(defines.events.on_player_selected_area, start_item_cam)
+script.on_event(defines.events.on_player_alt_reverse_selected_area, start_item_cam)
+script.on_event(defines.events.on_player_reverse_selected_area, start_item_cam)

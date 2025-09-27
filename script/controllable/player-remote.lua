@@ -19,7 +19,7 @@ end
 
 --- @param controllable FocusControllablePlayerRemote
 function controllable_player_remote.valid(controllable)
-    return controllable.player.valid
+    return controllable.player.valid and controllable.player.controller_type == defines.controllers.remote
 end
 
 --- @param controllable FocusControllablePlayerRemote

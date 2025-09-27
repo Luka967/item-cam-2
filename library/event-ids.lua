@@ -1,7 +1,7 @@
 --- @enum ic2_events
 local ic2_events = {
-    on_focus_switch = #{} --[[@as ic2_events.on_focus_switch ]],
-    on_focus_destroyed = #{} --[[@as ic2_events.on_focus_destroyed ]]
+    on_focus_switch = #{} --[[@as ic2_events.on_focus_switch]],
+    on_focus_destroyed = #{} --[[@as ic2_events.on_focus_destroyed]]
 }
 if prototypes then
     for key in pairs(ic2_events) do
